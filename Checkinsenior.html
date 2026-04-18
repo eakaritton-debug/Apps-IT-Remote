@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      :root {
+        --primary: #4f46e5;
+        --success: #2e7d32; 
+        --danger: #dc2626;
+        --warning: #d97706;
+        --gray: #94a3b8;
+        --bg-color: #f8fafc;
+        --surface: #ffffff;
+      }
+
+      body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); color: #1e293b; margin: 0; padding: 15px; box-sizing: border-box; }
+      
+      .app-container { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 10px; box-sizing: border-box; }
+      
+      .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
+      @media (min-width: 992px) {
+          .main-layout { grid-template-columns: 2fr 1fr; align-items: start; }
+      }
+      @media (min-width: 1400px) {
+          .main-layout { grid-template-columns: 3fr 1fr; align-items: start; }
+      }
+
+      /* Profile & Warning Badge */
+      .profile-card { background: var(--surface); border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+      .profile-icon { width: 50px; height: 50px; background: #e0e7ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; flex-shrink: 0; }
+      .profile-info h3 { margin: 0; font-size: 1.1em; font-weight: 600; color: #0f172a; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;}
+      .profile-info p { margin: 2px 0 0 0; font-size: 0.85em; color: #64748b; }
+
+      @keyframes pulseWarning {
+          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+      }
+      .badge-pulse {
+          background-color: #fee2e2;
+          color: #dc2626;
+          border: 1px solid #fca5a5;
+          font-size: 0.75em;
+          padding: 4px 10px;
+          border-radius: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-weight: 600;
+          animation: pulseWarning 2s infinite;
+      }
+
+      .active-workers-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 16px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: #166534; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s ease; }
+      .active-workers-card:hover { transform: translateY(-2px); box-shadow: 0 6px 10px -1px rgba(0,0,0,0.1); border-color: #86efac; }
+      .active-workers-card i { color: #22c55e; margin-right: 8px; font-size: 1.2em; }
+      .active-workers-card .count { font-size: 1em; font-weight: 500; }
+      .active-workers-card .count span { font-size: 1.8em; font-weight: 700; color: #15803d; margin-right: 5px; }
+
+      .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+      .action-btn { background: var(--surface); border: 2px solid transparent; border-radius: 16px; padding: 20px 10px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+      .action-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+      .action-btn i { font-size: 2.2em; }
+      .action-btn span { font-weight: 600; font-size: 1.1em; }
+      .btn-checkin { color: var(--success); border-color: #dcfce7; background: #f0fdf4; }
+      .btn-checkin:hover { background: var(--success); color: white; border-color: var(--success); }
+      .btn-checkout { color: var(--danger); border-color: #fee2e2; background: #fef2f2; }
+      .btn-checkout:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+      .history-section { background: var(--surface); border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+      .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+      .history-header h3 { margin: 0; font-size: 1.1em; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+      .search-box { display: flex; align-items: center; background: #f1f5f9; border-radius: 8px; padding: 5px 15px; border: 1px solid #cbd5e1; flex-grow: 1; max-width: 300px;}
+      .search-box input { border: none; background: transparent; padding: 8px; font-family: 'Prompt'; outline: none; width: 100%; }
+      
+      .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; }
+      table { width: 100%; border-collapse: collapse; min-width: 600px; }
+      th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.9em; vertical-align: top; }
+      th { background-color: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
+      tbody tr:hover { background-color: #f1f5f9; cursor: pointer; }
+      
+      .status-badge { display: inline-block; padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: 600; margin-top: 4px;}
+      .badge-success { background: #dcfce7; color: #166534; }
+      .badge-danger { background: #fee2e2; color: #991b1b; }
+      .badge-warning { background: #fef3c7; color: #92400e; }
+      .badge-gray { background: #f1f5f9; color: #475569; }
+
+      .calendar-section { background: var(--surface); border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: sticky; top: 20px; }
+      .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+      .calendar-header h3 { margin: 0; font-size: 1.1em; display: flex; align-items: center; gap: 8px; color: #1e293b; }
+      .month-nav { display: flex; align-items: center; gap: 10px; }
+      .month-nav button { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 0.9em; color: #475569; transition: background 0.2s; }
+      .month-nav button:hover { background: #e2e8f0; }
+      .month-nav span { font-weight: 600; font-size: 0.95em; min-width: 120px; text-align: center; }
+      
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+      .cal-day-name { font-weight: 600; font-size: 0.8em; color: #64748b; padding: 10px 0; }
+      .cal-date { padding: 10px 5px; border-radius: 8px; font-size: 0.9em; cursor: pointer; border: 1px solid transparent; min-height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; transition: background 0.2s;}
+      .cal-date:hover { background: #f1f5f9; }
+      .cal-date.empty { cursor: default; }
+      .cal-date.empty:hover { background: transparent; }
+      .cal-date.today { border-color: var(--primary); font-weight: bold; color: var(--primary); background: #e0e7ff; }
+      .cal-date.active { background: var(--primary); color: white; border-color: var(--primary); }
+      
+      .work-dot-container { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; margin-top: 4px;}
+      .work-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+      .work-dot.late { background: var(--danger); }
+
+      .day-details { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0; }
+      .day-details h4 { margin: 0 0 10px 0; font-size: 1em; color: #334155; }
+      .worker-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+      
+      .worker-item { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.85em; cursor: pointer; transition: all 0.2s ease; }
+      .worker-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+      .worker-item strong { color: var(--primary); display: block; margin-bottom: 4px; font-size: 1.05em; }
+      
+      /* Modals */
+      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; backdrop-filter: blur(3px); }
+      .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+      .modal-content { background: var(--surface); width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; box-sizing: border-box; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s; }
+      @media (min-width: 640px) { .modal-overlay { align-items: center; } .modal-content { border-radius: 20px; } }
+      .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+      .modal-header h3 { margin: 0; font-size: 1.2em; display: flex; align-items: center; gap: 8px; }
+      .close-modal { background: none; border: none; font-size: 1.5em; color: #94a3b8; cursor: pointer; transition: color 0.2s; }
+      .close-modal:hover { color: var(--danger); }
+
+      .form-group { margin-bottom: 15px; }
+      label { display: block; margin-bottom: 6px; color: #475569; font-size: 0.9em; font-weight: 600; }
+      .required { color: var(--danger); }
+      input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-family: 'Prompt'; box-sizing: border-box; outline: none; transition: all 0.2s; }
+      input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px #e0e7ff; background: #fff; }
+      textarea { resize: vertical; min-height: 70px; }
+
+      .image-upload-area { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 15px; text-align: center; margin-top: 5px; }
+      .image-preview-container { display: flex; justify-content: center; margin-bottom: 10px; }
+      .image-preview { position: relative; width: 120px; height: 120px; }
+      .image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; border: 2px solid #e2e8f0; cursor: zoom-in; transition: transform 0.2s; }
+      .image-preview img:hover { transform: scale(1.05); border-color: var(--primary); }
+      .remove-img-btn { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-weight: bold; z-index: 10; }
+      
+      .btn-camera { background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; font-family: 'Prompt'; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+      .btn-submit { width: 100%; padding: 14px; border: none; border-radius: 10px; color: white; font-family: 'Prompt'; font-weight: bold; font-size: 1.05em; cursor: pointer; margin-top: 20px; transition: opacity 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+      .btn-submit.green { background: var(--success); }
+      .btn-submit.red { background: var(--danger); }
+      .btn-submit:hover { opacity: 0.9; }
+
+      .info-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9em; display: none; }
+      .no-data { text-align: center; padding: 20px; color: #64748b; font-style: italic; }
+
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+      /* ========================================= */
+      /* SweetAlert Custom: ขนาดสมดุล พอดี ไม่เทอะทะ */
+      /* ========================================= */
+      .custom-swal-popup { border-radius: 20px !important; padding: 20px !important; width: 400px !important; max-width: 95vw !important; }
+      .custom-swal-icon { transform: scale(0.65) !important; margin: -10px auto 5px auto !important; }
+      .custom-swal-title { color: #1e293b !important; font-size: 1.3em !important; font-weight: 700 !important; margin-top: 5px !important; }
+      .swal2-confirm.custom-confirm-btn { background-color: #166534 !important; border-radius: 8px !important; font-family: 'Prompt' !important; font-weight: 600 !important; width: 120px; padding: 8px 10px !important; font-size: 0.95em !important; margin: 0 5px; }
+      .swal2-cancel.custom-cancel-btn { background-color: #94a3b8 !important; border-radius: 8px !important; font-family: 'Prompt' !important; font-weight: 600 !important; width: 120px; padding: 8px 10px !important; font-size: 0.95em !important; margin: 0 5px; }
+      .swal-summary-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 5px; text-align: left; background: #ffffff; }
+      .swal-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9em; align-items: center; }
+      .swal-label { color: #94a3b8; font-weight: 500; }
+      .swal-value { color: #1e293b; font-weight: 700; }
+      .swal-pill { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; }
+      .swal2-actions { margin-top: 10px !important; gap: 10px; }
+
+      /* ========================================= */
+      /* Popup รายละเอียดประวัติ (แก้ไขขนาดให้กะทัดรัด) */
+      /* ========================================= */
+      .detail-swal-popup {
+          width: 100% !important;
+          max-width: 650px !important; /* กำหนดความกว้างสูงสุด ไม่ให้เทอะทะ */
+          border-radius: 20px !important;
+          padding: 25px 20px 20px 20px !important; /* เพิ่ม padding บนกันปุ่ม X ทับเนื้อหา */
+      }
+      .detail-swal-popup .swal2-html-container {
+          margin: 0 !important;
+          overflow-y: hidden !important; /* ปิด Scroll นอก ให้เนื้อหาจัด Layout เอง */
+      }
+      .detail-swal-popup .swal2-close {
+          margin-top: 5px !important;
+          margin-right: 5px !important;
+      }
+      @media (max-width: 650px) {
+          .detail-swal-popup { width: 95vw !important; padding: 25px 15px 15px 15px !important; } 
+          .swal2-html-container .grid-cols-2 { grid-template-columns: 1fr !important; } /* มือถือให้เรียงบนล่าง */
+      }
+
+      /* Image Viewer Styles */
+      #image-viewer-overlay {
+          display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0, 0, 0, 0.92); z-index: 10005; flex-direction: column;
+          align-items: center; justify-content: center; backdrop-filter: blur(5px);
+      }
+      .viewer-top-bar {
+          position: absolute; top: 15px; right: 20px; display: flex; gap: 10px; z-index: 10010;
+          background: rgba(0, 0, 0, 0.5); padding: 5px 10px; border-radius: 30px;
+      }
+      .viewer-btn {
+          background: transparent; border: none; color: white; font-size: 1.3em; width: 36px; height: 36px;
+          border-radius: 50%; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+      }
+      .viewer-btn:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.1); }
+      .viewer-btn-close { color: #ef4444; }
+      .viewer-btn-close:hover { background: rgba(239, 68, 68, 0.2); }
+      
+      .viewer-nav-btn {
+          position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1);
+          border: none; color: white; font-size: 2em; width: 50px; height: 50px; border-radius: 50%;
+          cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; z-index: 10010;
+      }
+      .viewer-nav-btn:hover { background: rgba(255, 255, 255, 0.3); }
+      #viewer-prev { left: 20px; }
+      #viewer-next { right: 20px; }
+
+      #viewer-drag-container {
+          flex: 1; width: 100%; display: flex; align-items: center; justify-content: center;
+          overflow: hidden; position: relative;
+      }
+      #viewer-image {
+          max-width: 90%; max-height: 85%; object-fit: contain; cursor: grab;
+          transition: transform 0.2s ease-out; transform-origin: center center;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-radius: 8px;
+      }
+      #viewer-image:active { cursor: grabbing; }
+
+      #viewer-indicator {
+          position: absolute; bottom: 25px; color: white; font-family: 'Prompt'; font-size: 1em; font-weight: 600;
+          background: rgba(0, 0, 0, 0.6); padding: 8px 20px; border-radius: 20px; letter-spacing: 1px;
+      }
+
+      .popup-img-hover {
+          cursor: zoom-in; width: 100%; height: 160px; object-fit: contain; border-radius: 8px; 
+          border: 1px solid #cbd5e1; background: #0f172a; margin-top: 10px; transition: all 0.2s ease;
+      }
+      .popup-img-hover:hover { transform: scale(1.02); box-shadow: 0 6px 12px rgba(0,0,0,0.15); border-color: var(--primary); }
+
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+
+        <div class="main-layout">
+            <!-- ฝั่งซ้าย: Profile, ปุ่ม, ตาราง -->
+            <div class="left-col">
+                <div class="profile-card">
+                    <div class="profile-icon"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="profile-info">
+                        <h3>
+                            ยินดีต้อนรับ
+                            <!-- แจ้งเตือนค้าง Check Out จะแสดงตรงนี้ -->
+                            <span id="pending-checkout-warning" class="badge-pulse" style="display: none;"></span>
+                        </h3>
+                        <p id="display-username">กำลังโหลดข้อมูล...</p>
+                        <input type="hidden" id="sys-recorder" value="">
+                    </div>
+                </div>
+
+                <!-- การ์ดคนกำลังทำงาน คลิกดูรายละเอียดได้ -->
+                <div class="active-workers-card" onclick="showActiveWorkers()" title="คลิกเพื่อดูรายละเอียดพนักงานที่กำลังทำงาน">
+                    <div style="font-weight: 600; display: flex; align-items: center;">
+                        <i class="fa-solid fa-user-clock"></i> กำลังทำงานวันนี้ (คลิกดูรายละเอียด)
+                    </div>
+                    <div class="count"><span id="active-workers-count">0</span> คน</div>
+                </div>
+
+                <div class="action-grid">
+                    <div class="action-btn btn-checkin" onclick="openModal('in')">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Check In</span>
+                    </div>
+                    <div class="action-btn btn-checkout" onclick="openModal('out')">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Check Out</span>
+                    </div>
+                </div>
+
+                <div class="history-section">
+                    <div class="history-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--primary)"></i> ประวัติลงเวลาล่าสุด</h3>
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass" style="color: #94a3b8;"></i>
+                            <input type="text" id="history-search" placeholder="ค้นหาชื่อ, วันที่..." onkeyup="filterHistory()">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>วันที่</th>
+                                    <th>กะทำงาน</th>
+                                    <th>เวลาเข้า</th>
+                                    <th>เวลาออก</th>
+                                    <th>หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <tr><td colspan="5" class="no-data"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดประวัติ...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination-container" style="display: flex; justify-content: flex-end; gap: 5px; margin-top: 15px;"></div>
+                </div>
+            </div>
+
+            <!-- ฝั่งขวา: ปฏิทิน -->
+            <div class="right-col">
+                <div class="calendar-section">
+                    <div class="calendar-header">
+                        <h3><i class="fa-regular fa-calendar-days" style="color:var(--primary)"></i> ปฏิทินการทำงาน</h3>
+                        <div class="month-nav">
+                            <button onclick="changeMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="cal-month-year">เดือน ปี</span>
+                            <button onclick="changeMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="cal-day-name">อา.</div>
+                        <div class="cal-day-name">จ.</div>
+                        <div class="cal-day-name">อ.</div>
+                        <div class="cal-day-name">พ.</div>
+                        <div class="cal-day-name">พฤ.</div>
+                        <div class="cal-day-name">ศ.</div>
+                        <div class="cal-day-name">ส.</div>
+                    </div>
+                    <!-- พื้นที่สร้างปฏิทิน -->
+                    <div class="calendar-grid" id="calendar-body"></div>
+
+                    <!-- รายละเอียดเมื่อกดเลือกวัน -->
+                    <div class="day-details">
+                        <h4 id="detail-date-title">รายละเอียด: กรุณาเลือกวันที่</h4>
+                        <div class="worker-list" id="detail-worker-list">
+                            <div class="no-data" style="padding:10px;">ไม่มีข้อมูลการทำงาน</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: CHECK IN ================= -->
+    <div class="modal-overlay" id="modal-in" onclick="closeModalOnOutsideClick(event, 'in')">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--success);"><i class="fa-solid fa-right-to-bracket"></i> บันทึก Check In</h3>
+                <button type="button" class="close-modal" onclick="closeModal('in')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="checkin-form">
+                <div class="form-group">
+                    <label>เวลาที่ทำงาน (กะ) <span class="required">*</span></label>
+                    <select name="shift" id="shift-in" required>
+                        <option value="" disabled selected>เลือกกะการทำงาน</option>
+                        <option value="กะเช้า (06:00 น. - 15:00 น.)">กะเช้า (06:00 น. - 15:00 น.)</option>
+                        <option value="กะบ่าย (13:00 น. - 22:00 น.)">กะบ่าย (13:00 น. - 22:00 น.)</option>
+                        <option value="กะปกติ (08:00 น. - 18:00 น.)">กะปกติ (08:00 น. - 18:00 น.)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>หมายเหตุ (ไม่บังคับ)</label>
+                    <textarea name="remarkIn" id="remark-in" placeholder="ระบุหมายเหตุการเข้างาน (ถ้ามี)..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>ถ่ายรูปยืนยันตัวตน <span class="required">*</span></label>
+                    <div class="image-upload-area">
+                        <div class="image-preview-container" id="preview-in"></div>
+                        <button type="button" class="btn-camera" onclick="onAddImageClick('in')">
+                            <i class="fa-solid fa-camera"></i> เปิดกล้องถ่ายรูป
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit green"><i class="fa-solid fa-check-circle"></i> ดำเนินการ Check In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: CHECK OUT ================= -->
+    <div class="modal-overlay" id="modal-out" onclick="closeModalOnOutsideClick(event, 'out')">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--danger);"><i class="fa-solid fa-right-from-bracket"></i> บันทึก Check Out</h3>
+                <button type="button" class="close-modal" onclick="closeModal('out')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="checkout-form">
+                <input type="hidden" name="rowId" id="checkout-rowId">
+                <div id="checkin-info-box" class="info-box"></div>
+                <div id="checkout-fields" style="display: none;">
+                    <div class="form-group">
+                        <label>หมายเหตุ Check Out (ไม่บังคับ)</label>
+                        <textarea name="remarkOut" id="remark-out" placeholder="สรุปงานหรือหมายเหตุก่อนเลิกงาน..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>ถ่ายรูปยืนยันตัวตน <span class="required">*</span></label>
+                        <div class="image-upload-area">
+                            <div class="image-preview-container" id="preview-out"></div>
+                            <button type="button" class="btn-camera" onclick="onAddImageClick('out')">
+                                <i class="fa-solid fa-camera"></i> เปิดกล้องถ่ายรูป
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit red"><i class="fa-solid fa-check-circle"></i> ดำเนินการ Check Out</button>
+                </div>
+                <div id="checkout-loading" style="text-align:center; padding: 20px; color:#64748b;">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>กำลังตรวจสอบประวัติเข้างาน...
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= IMAGE VIEWER MODAL ================= -->
+    <div id="image-viewer-overlay">
+        <div class="viewer-top-bar">
+            <button class="viewer-btn" onclick="downloadViewerImage()" title="ดาวน์โหลดรูปลงเครื่อง"><i class="fa-solid fa-download"></i></button>
+            <button class="viewer-btn" onclick="rotateViewer(-90)" title="หมุนซ้าย"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="viewer-btn" onclick="rotateViewer(90)" title="หมุนขวา"><i class="fa-solid fa-rotate-right"></i></button>
+            <button class="viewer-btn" onclick="zoomViewer(0.2)" title="ซูมเข้า"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <button class="viewer-btn" onclick="zoomViewer(-0.2)" title="ซูมออก"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button class="viewer-btn" onclick="resetViewer()" title="ขนาดปกติ"><i class="fa-solid fa-expand"></i></button>
+            <div style="width: 1px; background: rgba(255,255,255,0.3); margin: 0 5px;"></div>
+            <button class="viewer-btn viewer-btn-close" onclick="closeImageViewer()" title="ปิดหน้านี้"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <button id="viewer-prev" class="viewer-nav-btn" onclick="prevViewerImage()"><i class="fa-solid fa-chevron-left"></i></button>
+        
+        <div id="viewer-drag-container">
+            <img id="viewer-image" src="">
+        </div>
+
+        <button id="viewer-next" class="viewer-nav-btn" onclick="nextViewerImage()"><i class="fa-solid fa-chevron-right"></i></button>
+
+        <div id="viewer-indicator">1 / 1</div>
+    </div>
+
+    <script>
+        let attachedFileIn = null;
+        let attachedFileOut = null;
+        let userFullName = "";
+        
+        let globalHistoryData = []; 
+        let currentDisplayData = []; 
+        let currentPage = 1;         
+        const itemsPerPage = 8;      
+
+        // ตัวแปรตรวจสอบค้าง Check Out ข้ามวัน
+        let hasPendingCheckOut = false;
+        let pendingCheckOutDate = null;
+
+        // ตัวแปรสำหรับปฏิทิน
+        let calCurrentDate = new Date();
+        let selectedDateStr = "";
+
+        // ตัวแปรสำหรับ Image Viewer
+        let tempViewerImages = [];
+        let currentViewerIndex = 0;
+        let vScale = 1;
+        let vRotate = 0;
+        let vTranslateX = 0;
+        let vTranslateY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+            document.getElementById('checkin-form').addEventListener('submit', (e) => handleFormSubmit(e, 'in'));
+            document.getElementById('checkout-form').addEventListener('submit', (e) => handleFormSubmit(e, 'out'));
+            setupImageViewerEvents();
+        });
+
+        // --- UI & Modal Functions ---
+        function openModal(type) {
+            if(!userFullName || userFullName === 'กำลังโหลดข้อมูล...') {
+                Swal.fire('รอสักครู่', 'ระบบกำลังโหลดข้อมูลผู้ใช้ กรุณารอสักครู่', 'warning');
+                return;
+            }
+
+            if(type === 'in' && hasPendingCheckOut) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'พบรายการค้าง Check Out',
+                    html: `คุณมีรายการเข้างานของวันที่ <b>${pendingCheckOutDate}</b> ที่ยังไม่ได้ Check Out<br><br>กรุณาทำการ <b>Check Out</b> ให้เรียบร้อยก่อนทำการ Check In ใหม่ครับ`,
+                    confirmButtonText: 'รับทราบ',
+                    width: '400px',
+                    customClass: { popup: 'custom-swal-popup', title: 'custom-swal-title', confirmButton: 'custom-confirm-btn', icon: 'custom-swal-icon' }
+                });
+                return; 
+            }
+
+            document.getElementById(`modal-${type}`).classList.add('active');
+            if(type === 'out') loadCheckInData();
+        }
+
+        function closeModal(type) {
+            document.getElementById(`modal-${type}`).classList.remove('active');
+            document.getElementById(`${type === 'in' ? 'checkin' : 'checkout'}-form`).reset();
+            if(type === 'in') {
+                attachedFileIn = null;
+                renderPreview('in');
+            } else {
+                attachedFileOut = null;
+                renderPreview('out');
+                document.getElementById('checkout-fields').style.display = 'none';
+                document.getElementById('checkin-info-box').style.display = 'none';
+                document.getElementById('checkout-loading').style.display = 'block';
+            }
+        }
+
+        function closeModalOnOutsideClick(event, type) {
+            if (event.target === document.getElementById(`modal-${type}`)) closeModal(type);
+        }
+
+        // --- Data Fetching & Silent Reload ---
+        function loadUserProfile() {
+            const userToken = "<?= typeof userToken !== 'undefined' ? userToken : '' ?>";
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if(res && res.success) {
+                            userFullName = res.userFullName || "";
+                            document.getElementById('display-username').innerText = userFullName;
+                            document.getElementById('sys-recorder').value = userFullName;
+                            renderHistory(res.data);
+                            renderCalendar(); 
+                        } else {
+                            const errMsg = (res && res.message) ? res.message : 'กรุณาล็อกอินใหม่';
+                            document.getElementById('display-username').innerText = "ไม่พบผู้ใช้งาน (" + errMsg + ")";
+                            document.getElementById('history-tbody').innerHTML = `<tr><td colspan="5" class="no-data">${errMsg}</td></tr>`;
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        document.getElementById('display-username').innerText = "เชื่อมต่อล้มเหลว";
+                        document.getElementById('history-tbody').innerHTML = `<tr><td colspan="5" class="no-data">ระบบขัดข้อง</td></tr>`;
+                    })
+                    .getSeniorHistoryData(userToken);
+            }
+        }
+
+        function silentReloadData() {
+            const userToken = "<?= typeof userToken !== 'undefined' ? userToken : '' ?>";
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if(res && res.success) {
+                            renderHistory(res.data);
+                            renderCalendar();
+                        }
+                    })
+                    .getSeniorHistoryData(userToken);
+            }
+        }
+
+        function loadCheckInData() {
+            const recorder = document.getElementById('sys-recorder').value;
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        document.getElementById('checkout-loading').style.display = 'none';
+                        if(res && res.found) {
+                            document.getElementById('checkout-rowId').value = res.rowIndex;
+                            const infoBox = document.getElementById('checkin-info-box');
+                            infoBox.style.display = 'block';
+                            infoBox.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <span style="color:#64748b; font-size:12px; font-weight:bold;">วันที่ทำงาน:</span> <strong style="color:var(--primary); font-size:14px;">${res.dateIn || '-'}</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <span style="color:#64748b; font-size:12px; font-weight:bold;">กะทำงาน:</span> <strong style="font-size:14px;">${res.shift || '-'}</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span style="color:#64748b; font-size:12px; font-weight:bold;">เวลาเข้า (Time In):</span> <strong style="color:var(--success); font-size:14px;">${res.timeIn || '-'} น.</strong>
+                                </div>
+                            `;
+                            document.getElementById('checkout-fields').style.display = 'block';
+                        } else {
+                            document.getElementById('checkin-info-box').style.display = 'block';
+                            document.getElementById('checkin-info-box').innerHTML = `
+                                <div style="text-align:center; color: var(--danger);">
+                                    <i class="fa-solid fa-circle-xmark fa-2x mb-2"></i><br>
+                                    ไม่มีประวัติค้าง Check Out ในระบบ
+                                </div>
+                            `;
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        document.getElementById('checkout-loading').innerHTML = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+                    })
+                    .loadSeniorCheckInToday(recorder);
+            }
+        }
+
+        function updateActiveWorkersSummary() {
+            let activeUsers = new Set();
+            globalHistoryData.forEach(item => {
+                if (item.timeOut === 'ยังไม่ Check Out') {
+                    if (item.recorder) activeUsers.add(item.recorder);
+                }
+            });
+            document.getElementById('active-workers-count').innerText = activeUsers.size;
+        }
+
+        function showActiveWorkers() {
+            let activeItems = globalHistoryData.filter(item => item.timeOut === 'ยังไม่ Check Out');
+            
+            if(activeItems.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ไม่มีผู้ปฏิบัติงาน',
+                    text: 'ขณะนี้ไม่มีพนักงานที่กำลังทำงานอยู่',
+                    confirmButtonText: 'ตกลง',
+                    customClass: { popup: 'custom-swal-popup', confirmButton: 'custom-confirm-btn' }
+                });
+                return;
+            }
+
+            let htmlContent = `<div style="text-align: left; max-height: 50vh; overflow-y: auto; padding-right: 5px;">`;
+            
+            activeItems.forEach(item => {
+                let nameStr = item.recorder ? item.recorder.split('-')[1] || item.recorder : 'ไม่ทราบชื่อ';
+                let shiftStr = item.shift ? item.shift.split(' ')[0] : '-';
+                let inHtml = item.isLateIn ? `<span style="color:var(--danger)">${item.timeIn} น. (สาย)</span>` : `<span style="color:var(--success)">${item.timeIn} น.</span>`;
+                
+                htmlContent += `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px; font-size: 14px;">
+                            <i class="fa-solid fa-user-check"></i> ${nameStr.trim()}
+                        </div>
+                        <div style="font-size: 13px; color: #475569; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; margin-bottom: 4px;">
+                            <span><b style="font-size:12px; color:#64748b;">วันที่เข้า:</b> <span style="font-weight:bold; color:#1e293b;">${item.date || '-'}</span></span>
+                            <span><b style="font-size:12px; color:#64748b;">กะ:</b> <span style="font-weight:bold; color:#1e293b;">${shiftStr}</span></span>
+                        </div>
+                        <div style="font-size: 13px; color: #475569;">
+                            <b style="font-size:12px; color:#64748b;">เวลาเข้างาน:</b> <strong style="font-size:14px;">${inHtml}</strong>
+                        </div>
+                    </div>
+                `;
+            });
+            htmlContent += `</div>`;
+
+            Swal.fire({
+                title: '<i class="fa-solid fa-users" style="color:var(--primary)"></i> พนักงานที่กำลังทำงาน',
+                html: htmlContent,
+                showCloseButton: true,
+                showConfirmButton: false,
+                width: '500px',
+                customClass: { popup: 'custom-swal-popup', title: 'custom-swal-title' }
+            });
+        }
+
+        function preloadImages(dataArr) {
+            const recentData = dataArr.slice(0, 20);
+            recentData.forEach(item => {
+                if (item.picIn) { const img = new Image(); img.src = item.picIn; }
+                if (item.picOut) { const img = new Image(); img.src = item.picOut; }
+            });
+        }
+
+        // --- History Table Logic ---
+        function renderHistory(data) {
+            globalHistoryData = Array.isArray(data) ? data : [];
+            
+            hasPendingCheckOut = false;
+            pendingCheckOutDate = null;
+            
+            const currentUser = document.getElementById('sys-recorder').value;
+            if(currentUser) {
+                const pendingItem = globalHistoryData.find(item => item.recorder === currentUser && item.timeOut === 'ยังไม่ Check Out');
+                if(pendingItem) {
+                    hasPendingCheckOut = true;
+                    pendingCheckOutDate = pendingItem.date;
+                }
+            }
+
+            const warningBadge = document.getElementById('pending-checkout-warning');
+            if(warningBadge) {
+                if(hasPendingCheckOut) {
+                    warningBadge.style.display = 'inline-flex';
+                    warningBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ค้าง Check Out (${pendingCheckOutDate})`;
+                } else {
+                    warningBadge.style.display = 'none';
+                }
+            }
+
+            updateActiveWorkersSummary(); 
+            preloadImages(globalHistoryData); 
+            
+            filterHistory();
+        }
+
+        function filterHistory() {
+            const query = document.getElementById('history-search').value.toLowerCase();
+            currentDisplayData = globalHistoryData.filter(item => {
+                const searchStr = `${item.date} ${item.recorder} ${item.shift}`.toLowerCase();
+                return searchStr.includes(query);
+            });
+            currentPage = 1;
+            displayHistoryPage(currentPage);
+        }
+
+        function displayHistoryPage(page) {
+            const tbody = document.getElementById('history-tbody');
+            const pContainer = document.getElementById('pagination-container');
+            
+            if (currentDisplayData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">ไม่พบประวัติการลงเวลา</td></tr>';
+                pContainer.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(currentDisplayData.length / itemsPerPage);
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = currentDisplayData.slice(startIndex, endIndex);
+
+            let html = '';
+            pageData.forEach((item, index) => {
+                if (!item) return;
+                const absoluteIndex = startIndex + index;
+                
+                let inBadge = item.isLateIn ? '<div class="status-badge badge-danger">สาย</div>' : '<div class="status-badge badge-success">ปกติ</div>';
+                let outBadge = '';
+                if(item.timeOut !== 'ยังไม่ Check Out') {
+                    outBadge = item.isEarlyOut ? '<div class="status-badge badge-warning">ออกก่อน</div>' : '<div class="status-badge badge-success">ปกติ</div>';
+                } else {
+                    outBadge = '<div class="status-badge badge-gray">รอลงเวลา</div>';
+                }
+
+                let shortShift = item.shift ? item.shift.split(' ')[0] : '-';
+
+                let remarkArr = [];
+                if(item.remarkIn) remarkArr.push(`<div style="color:var(--success); font-size:11px; margin-bottom:4px;"><i class="fa-solid fa-right-to-bracket"></i> ${item.remarkIn}</div>`);
+                if(item.remarkOut) remarkArr.push(`<div style="color:var(--danger); font-size:11px;"><i class="fa-solid fa-right-from-bracket"></i> ${item.remarkOut}</div>`);
+                let remarkDisplay = remarkArr.length > 0 ? remarkArr.join('') : '<span style="color:#cbd5e1;">-</span>';
+
+                html += `
+                <tr onclick="showHistoryDetail(${absoluteIndex})">
+                    <td style="font-weight:500;">${item.date || '-'}</td>
+                    <td>${shortShift}</td>
+                    <td>${item.timeIn || '-'}${inBadge}</td>
+                    <td>${item.timeOut === 'ยังไม่ Check Out' ? '-' : item.timeOut}${outBadge}</td>
+                    <td>${remarkDisplay}</td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            renderPagination(totalPages, pContainer);
+        }
+
+        function renderPagination(totalPages, pContainer) {
+            if (totalPages <= 1) { pContainer.innerHTML = ''; return; }
+            let html = `<button onclick="displayHistoryPage(${currentPage - 1})" style="padding: 4px 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === 1 ? '0.5' : '1'};"><i class="fa-solid fa-chevron-left"></i></button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    const activeStyle = i === currentPage ? 'background: var(--primary); color: #fff; border-color: var(--primary);' : 'background: #fff; color: #334155; border-color: #cbd5e1;';
+                    html += `<button onclick="displayHistoryPage(${i})" style="padding: 4px 10px; border: 1px solid; border-radius: 6px; cursor: pointer; ${activeStyle}">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    html += `<span style="padding: 4px; color: #94a3b8;">...</span>`;
+                }
+            }
+            html += `<button onclick="displayHistoryPage(${currentPage + 1})" style="padding: 4px 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === totalPages ? '0.5' : '1'};"><i class="fa-solid fa-chevron-right"></i></button>`;
+            pContainer.innerHTML = html;
+        }
+
+        // ==========================================
+        //  Popup แสดงรายละเอียดและเรียกใช้งาน Image Viewer
+        // ==========================================
+        function showHistoryDetail(displayIndex) {
+            const item = currentDisplayData[displayIndex];
+            if (!item) return;
+            renderPopupDetail(item);
+        }
+
+        function showHistoryDetailByGlobalIndex(globalIndex) {
+            const item = globalHistoryData[globalIndex];
+            if (!item) return;
+            renderPopupDetail(item);
+        }
+
+        function renderPopupDetail(item) {
+            tempViewerImages = [];
+            let inIdx = -1, outIdx = -1;
+
+            if (item.picIn) { tempViewerImages.push(item.picIn); inIdx = tempViewerImages.length - 1; }
+            if (item.picOut) { tempViewerImages.push(item.picOut); outIdx = tempViewerImages.length - 1; }
+
+            const inImg = item.picIn 
+                ? `<img src="${item.picIn}" onclick="openImageViewer(${inIdx})" class="popup-img-hover" title="คลิกเพื่อดูรูปขยาย">` 
+                : '<div style="color:#94a3b8; font-size:12px; font-weight:bold; text-align:center; padding: 10px 0; background:#f1f5f9; border-radius:8px; margin-top:10px;">ไม่มีรูปภาพแนบ</div>';
+            
+            const outImg = item.picOut 
+                ? `<img src="${item.picOut}" onclick="openImageViewer(${outIdx})" class="popup-img-hover" title="คลิกเพื่อดูรูปขยาย">` 
+                : '<div style="color:#94a3b8; font-size:12px; font-weight:bold; text-align:center; padding: 10px 0; background:#f1f5f9; border-radius:8px; margin-top:10px;">ไม่มีรูปภาพแนบ</div>';
+
+            const mapIn = (item.latIn && item.lonIn) ? `<a href="https://www.google.com/maps?q=${item.latIn},${item.lonIn}" target="_blank" style="color:#3b82f6; font-size:13px; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-map-location-dot"></i> ดูพิกัดแผนที่</a>` : '<span style="color:#94a3b8; font-size:13px;">ไม่พบพิกัด</span>';
+            const mapOut = (item.latOut && item.lonOut) ? `<a href="https://www.google.com/maps?q=${item.latOut},${item.lonOut}" target="_blank" style="color:#3b82f6; font-size:13px; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-map-location-dot"></i> ดูพิกัดแผนที่</a>` : '<span style="color:#94a3b8; font-size:13px;">ไม่พบพิกัด</span>';
+            
+            // นำ Design Guideline มาประยุกต์ใช้กับกล่องรายละเอียด
+            Swal.fire({
+                html: `
+                    <div style="text-align:left; font-family: 'Prompt', sans-serif;">
+                        <!-- ส่วนหัว: จัดการไม่ให้ปุ่ม X มาทับเนื้อหา -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-top:10px; margin-bottom:15px; padding-right: 25px;">
+                            <div style="font-size: 18px; font-weight: 700; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-calendar-day" style="color:var(--primary)"></i> วันที่: ${item.date}
+                            </div>
+                            <span style="color:var(--primary); font-weight:600; background: #e0e7ff; padding: 4px 12px; border-radius: 20px; font-size: 13px;">${item.shift}</span>
+                        </div>
+                        
+                        <!-- ผู้บันทึก -->
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-size:12px; font-weight:bold; color:#64748b;"><i class="fa-solid fa-user-tie"></i> ผู้บันทึก:</span>
+                            <span style="font-size:14px; font-weight:bold; color:#1e293b; margin-left:5px;">${item.recorder}</span>
+                        </div>
+                        
+                        <!-- กล่อง Check In / Out -->
+                        <div class="grid-cols-2" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; text-align:left;">
+                            <div style="background:#f8fafc; padding:15px; border-radius:12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+                                <div style="${item.isLateIn ? 'color:var(--danger);' : 'color:var(--success);'} font-weight:bold; font-size:15px; margin-bottom:12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
+                                    <i class="fa-solid fa-right-to-bracket"></i> Check In ${item.isLateIn ? '<span style="font-size:11px; background:#fee2e2; padding:2px 6px; border-radius:4px; margin-left:5px;">(สาย)</span>' : ''}
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">เวลา:</span>
+                                    <strong style="font-size: 18px; ${item.isLateIn ? 'color:var(--danger);' : 'color:#1e293b;'}">${item.timeIn || '-'}</strong>
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">หมายเหตุ:</span>
+                                    <span style="font-size: 13px; color:#334155;">${item.remarkIn || '-'}</span>
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">พิกัด:</span>
+                                    ${mapIn}
+                                </div>
+                                <div style="flex-grow: 1; display: flex; align-items: flex-end;">${inImg}</div>
+                            </div>
+
+                            <div style="background:#f8fafc; padding:15px; border-radius:12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+                                <div style="${item.isEarlyOut ? 'color:var(--warning);' : 'color:#475569;'} font-weight:bold; font-size:15px; margin-bottom:12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
+                                    <i class="fa-solid fa-right-from-bracket"></i> Check Out ${item.isEarlyOut ? '<span style="font-size:11px; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">(ออกก่อน)</span>' : ''}
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">เวลา:</span>
+                                    <strong style="font-size: 18px; ${item.isEarlyOut ? 'color:var(--warning);' : 'color:#1e293b;'}">${item.timeOut || '-'}</strong>
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">หมายเหตุ:</span>
+                                    <span style="font-size: 13px; color:#334155;">${item.remarkOut || '-'}</span>
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#64748b; display:block;">พิกัด:</span>
+                                    ${mapOut}
+                                </div>
+                                <div style="flex-grow: 1; display: flex; align-items: flex-end;">${outImg}</div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                showCloseButton: true, 
+                showConfirmButton: false,
+                customClass: { popup: 'detail-swal-popup' }
+            });
+        }
+
+        // ==========================================
+        //  Image Viewer Logic
+        // ==========================================
+        function openImageViewer(index) {
+            currentViewerIndex = index;
+            document.getElementById('image-viewer-overlay').style.display = 'flex';
+            updateViewerImage();
+        }
+
+        function openFormImageViewer(type) {
+            const file = type === 'in' ? attachedFileIn : attachedFileOut;
+            if (!file) return;
+            tempViewerImages = [file.fileData];
+            openImageViewer(0);
+        }
+
+        function closeImageViewer() {
+            document.getElementById('image-viewer-overlay').style.display = 'none';
+        }
+
+        function updateViewerImage() {
+            resetViewer();
+            const imgEl = document.getElementById('viewer-image');
+            imgEl.src = tempViewerImages[currentViewerIndex];
+            
+            const hasMultiple = tempViewerImages.length > 1;
+            document.getElementById('viewer-prev').style.display = hasMultiple ? 'flex' : 'none';
+            document.getElementById('viewer-next').style.display = hasMultiple ? 'flex' : 'none';
+            document.getElementById('viewer-indicator').innerText = `${currentViewerIndex + 1} / ${tempViewerImages.length}`;
+        }
+
+        function nextViewerImage() {
+            currentViewerIndex = (currentViewerIndex + 1) % tempViewerImages.length;
+            updateViewerImage();
+        }
+
+        function prevViewerImage() {
+            currentViewerIndex = (currentViewerIndex - 1 + tempViewerImages.length) % tempViewerImages.length;
+            updateViewerImage();
+        }
+
+        function zoomViewer(delta) {
+            vScale += delta;
+            if(vScale < 0.2) vScale = 0.2; 
+            if(vScale > 5) vScale = 5;     
+            applyViewerTransform();
+        }
+
+        function rotateViewer(degree) {
+            vRotate += degree;
+            applyViewerTransform();
+        }
+
+        function resetViewer() {
+            vScale = 1;
+            vRotate = 0;
+            vTranslateX = 0;
+            vTranslateY = 0;
+            applyViewerTransform();
+        }
+
+        function applyViewerTransform() {
+            const imgEl = document.getElementById('viewer-image');
+            imgEl.style.transform = `translate(${vTranslateX}px, ${vTranslateY}px) scale(${vScale}) rotate(${vRotate}deg)`;
+        }
+
+        async function downloadViewerImage() {
+            const url = tempViewerImages[currentViewerIndex];
+            if(!url) return;
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `checkin_image_${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch(e) {
+                window.open(url, '_blank');
+            }
+        }
+
+        function setupImageViewerEvents() {
+            const container = document.getElementById('viewer-drag-container');
+            const imgEl = document.getElementById('viewer-image');
+
+            container.addEventListener('mousedown', (e) => {
+                if(e.target !== imgEl) return;
+                e.preventDefault();
+                isDragging = true;
+                startX = e.clientX - vTranslateX;
+                startY = e.clientY - vTranslateY;
+                imgEl.style.transition = 'none'; 
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if(!isDragging) return;
+                vTranslateX = e.clientX - startX;
+                vTranslateY = e.clientY - startY;
+                applyViewerTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if(isDragging) {
+                    isDragging = false;
+                    imgEl.style.transition = 'transform 0.2s ease-out';
+                }
+            });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if(e.deltaY < 0) zoomViewer(0.15);
+                else zoomViewer(-0.15);
+            }, {passive: false});
+
+            container.addEventListener('touchstart', (e) => {
+                if(e.target !== imgEl) return;
+                if(e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - vTranslateX;
+                    startY = e.touches[0].clientY - vTranslateY;
+                    imgEl.style.transition = 'none';
+                }
+            }, {passive: true});
+
+            window.addEventListener('touchmove', (e) => {
+                if(!isDragging) return;
+                if(e.touches.length === 1) {
+                    e.preventDefault(); 
+                    vTranslateX = e.touches[0].clientX - startX;
+                    vTranslateY = e.touches[0].clientY - startY;
+                    applyViewerTransform();
+                }
+            }, {passive: false});
+
+            window.addEventListener('touchend', () => {
+                if(isDragging) {
+                    isDragging = false;
+                    imgEl.style.transition = 'transform 0.2s ease-out';
+                }
+            });
+        }
+
+        // --- Calendar Logic ---
+        const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        
+        function changeMonth(dir) {
+            calCurrentDate.setMonth(calCurrentDate.getMonth() + dir);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = calCurrentDate.getFullYear();
+            const month = calCurrentDate.getMonth();
+            
+            document.getElementById('cal-month-year').innerText = `${thaiMonths[month]} ${year + 543}`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const tbody = document.getElementById('calendar-body');
+            tbody.innerHTML = '';
+            
+            for (let i = 0; i < firstDay; i++) {
+                tbody.innerHTML += `<div class="cal-date empty"></div>`;
+            }
+            
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+            let workByDate = {};
+            globalHistoryData.forEach(item => {
+                if(!item.date || item.date === '-') return;
+                if(workByDate[item.date]) {
+                    workByDate[item.date].push(item);
+                } else {
+                    workByDate[item.date] = [item];
+                }
+            });
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dStr = (i < 10 ? '0' : '') + i;
+                const mStr = ((month+1) < 10 ? '0' : '') + (month+1);
+                const dateKey = `${dStr}/${mStr}/${year}`;
+                
+                let isTodayClass = (isCurrentMonth && i === today.getDate()) ? 'today' : '';
+                let activeClass = (selectedDateStr === dateKey) ? 'active' : '';
+                
+                let dotsHtml = '';
+                if(workByDate[dateKey]) {
+                    dotsHtml = '<div class="work-dot-container">';
+                    let maxDots = Math.min(workByDate[dateKey].length, 4);
+                    for(let j=0; j<maxDots; j++) {
+                        let isLate = workByDate[dateKey][j].isLateIn;
+                        dotsHtml += `<div class="work-dot ${isLate ? 'late' : ''}"></div>`;
+                    }
+                    if(workByDate[dateKey].length > 4) dotsHtml += '<span style="font-size:8px;">+</span>';
+                    dotsHtml += '</div>';
+                }
+
+                tbody.innerHTML += `
+                    <div class="cal-date ${isTodayClass} ${activeClass}" onclick="selectDate('${dateKey}', this)">
+                        ${i}
+                        ${dotsHtml}
+                    </div>
+                `;
+            }
+        }
+
+        function selectDate(dateKey, element) {
+            document.querySelectorAll('.cal-date').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+            selectedDateStr = dateKey;
+
+            const parts = dateKey.split('/');
+            const thDateDisplay = `${parseInt(parts[0])} ${thaiMonths[parseInt(parts[1])-1]} ${parseInt(parts[2])+543}`;
+            
+            document.getElementById('detail-date-title').innerText = `รายละเอียด: ${thDateDisplay}`;
+            
+            const workerListContainer = document.getElementById('detail-worker-list');
+            workerListContainer.innerHTML = '';
+
+            let matchedItems = [];
+            globalHistoryData.forEach((item, index) => {
+                if (item.date === dateKey) {
+                    matchedItems.push({ item: item, globalIndex: index });
+                }
+            });
+
+            if(matchedItems.length === 0) {
+                workerListContainer.innerHTML = '<div class="no-data" style="padding:10px;">ไม่มีข้อมูลการทำงาน</div>';
+                return;
+            }
+
+            matchedItems.forEach(data => {
+                let item = data.item;
+                let globalIndex = data.globalIndex; 
+
+                let nameStr = item.recorder ? item.recorder.split('-')[1] || item.recorder : 'ไม่ทราบชื่อ';
+                let shiftStr = item.shift ? item.shift.split(' ')[0] : '-';
+                let inHtml = item.isLateIn ? `<span style="color:var(--danger)">${item.timeIn} (สาย)</span>` : `<span style="color:var(--success)">${item.timeIn}</span>`;
+                let outHtml = item.timeOut === 'ยังไม่ Check Out' ? 'รอออก' : item.timeOut;
+
+                workerListContainer.innerHTML += `
+                    <div class="worker-item" onclick="showHistoryDetailByGlobalIndex(${globalIndex})" title="คลิกเพื่อดูรายละเอียด">
+                        <strong><i class="fa-solid fa-user-check"></i> ${nameStr.trim()}</strong>
+                        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                            <span style="font-size:12px; color:#64748b;"><b>กะ:</b> <span style="color:#1e293b;">${shiftStr}</span></span>
+                            <span style="font-size:12px; color:#64748b;"><b>เข้า:</b> ${inHtml} | <b>ออก:</b> ${outHtml}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Camera & Form Logic ---
+        function onAddImageClick(type) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.capture = 'environment';
+            fileInput.onchange = e => {
+                const file = e.target.files[0];
+                if (file) {
+                    Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    resizeImage(file, resizedDataUrl => {
+                        const safeFileName = `Check${type === 'in' ? 'In' : 'Out'}_${Date.now()}.jpg`;
+                        if(type === 'in') attachedFileIn = { fileName: safeFileName, fileData: resizedDataUrl };
+                        else attachedFileOut = { fileName: safeFileName, fileData: resizedDataUrl };
+                        
+                        renderPreview('in');
+                        renderPreview('out');
+                        Swal.close();
+                    });
+                }
+            };
+            fileInput.click();
+        }
+
+        function resizeImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+                    
+                    if (width > 800) { height = (800 / width) * height; width = 800; }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const watermarkText = `บันทึกเวลา: ${dateStr} ${timeStr} น.`;
+
+                    const fontSize = Math.max(14, Math.floor(width * 0.035)); 
+                    ctx.font = `bold ${fontSize}px Prompt, sans-serif`;
+                    ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+
+                    const padding = 15;
+                    const textWidth = ctx.measureText(watermarkText).width;
+                    const bgX = width - textWidth - (padding * 2) - 15;
+                    const bgY = height - fontSize - (padding * 2) - 15;
+                    
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                    ctx.beginPath(); 
+                    if(ctx.roundRect) ctx.roundRect(bgX, bgY, textWidth + (padding * 2), fontSize + (padding * 2), 10);
+                    else ctx.fillRect(bgX, bgY, textWidth + (padding * 2), fontSize + (padding * 2));
+                    ctx.fill();
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(watermarkText, width - padding - 15, height - padding - 15);
+
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderPreview(type) {
+            const container = document.getElementById(`preview-${type}`);
+            const file = type === 'in' ? attachedFileIn : attachedFileOut;
+            container.innerHTML = '';
+            if (file) {
+                container.innerHTML = `
+                    <div class="image-preview">
+                        <img src="${file.fileData}" onclick="openFormImageViewer('${type}')" title="คลิกเพื่อขยายและจัดการรูปภาพ">
+                        <button type="button" class="remove-img-btn" onclick="attachedFile${type==='in'?'In':'Out'} = null; renderPreview('${type}');">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>`;
+            }
+        }
+
+        function checkLateStatus(shift) {
+            const now = new Date();
+            const h = now.getHours(); const m = now.getMinutes();
+            const currentTimeStr = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+            
+            if (shift.includes("06:00") && currentTimeStr > "06:00") return true;
+            if (shift.includes("13:00") && currentTimeStr > "13:00") return true;
+            if (shift.includes("08:00") && currentTimeStr > "08:00") return true;
+            
+            return false;
+        }
+
+        function handleFormSubmit(e, type) {
+            e.preventDefault();
+            const form = e.target;
+            const file = type === 'in' ? attachedFileIn : attachedFileOut;
+            const recorderInput = document.getElementById('sys-recorder').value;
+
+            if (!recorderInput) { Swal.fire('Error', 'ไม่พบข้อมูลผู้ใช้', 'error'); return; }
+            if (!file) { Swal.fire('คำเตือน', 'กรุณาถ่ายรูปยืนยันตัวตน', 'warning'); return; }
+
+            Swal.fire({ title: 'กำลังระบุตำแหน่ง GPS...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            navigator.geolocation.getCurrentPosition(
+                pos => { processSubmission(form, type, pos.coords.latitude, pos.coords.longitude); },
+                err => {
+                    Swal.fire({
+                        icon: 'warning', title: 'ไม่พบตำแหน่ง GPS', text: 'ระบบจะบันทึกข้อมูลโดยไม่มีพิกัด ยืนยันหรือไม่?',
+                        showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
+                    }).then(res => { if(res.isConfirmed) processSubmission(form, type, "", ""); });
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function processSubmission(form, type, lat, lon) {
+            const rawData = new FormData(form);
+            let formObject = Object.fromEntries(rawData.entries());
+            
+            let payload = {
+                lat: lat || "", 
+                lon: lon || "",
+                file: type === 'in' ? attachedFileIn : attachedFileOut,
+                recorder: document.getElementById('sys-recorder').value
+            };
+
+            let displayShift = "ตามกะของวันนี้";
+
+            if (type === 'in') {
+                payload.shift = formObject.shift;
+                payload.remarkIn = formObject.remarkIn || "";
+                displayShift = formObject.shift;
+            } else {
+                payload.rowId = formObject.rowId;
+                payload.remarkOut = formObject.remarkOut || "";
+            }
+
+            let statusBadgeHtml = '';
+            const now = new Date();
+            const timeNow = (now.getHours() < 10 ? '0' : '') + now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+
+            if (type === 'in') {
+                let isLate = checkLateStatus(payload.shift);
+                if (isLate) {
+                    payload.remarkIn = "[สาย] " + payload.remarkIn;
+                    statusBadgeHtml = `<span style="color:var(--danger); font-weight:700; font-size:14px;">สาย (LATE)</span>`;
+                } else {
+                    statusBadgeHtml = `<span style="color:var(--success); font-weight:700; font-size:14px;">ปกติ (ON TIME)</span>`;
+                }
+            } else {
+                statusBadgeHtml = `<span style="color:var(--primary); font-weight:700; font-size:14px;">เลิกงาน (CHECK OUT)</span>`;
+            }
+
+            const confirmHtml = `
+                <div class="swal-summary-box">
+                    <div class="swal-row" style="border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+                        <span class="swal-label" style="font-size:12px;">เวลาที่บันทึก:</span>
+                        <span class="swal-value" style="font-size:14px;">${timeNow} น.</span>
+                    </div>
+                    <div class="swal-row" style="margin-top: 12px;">
+                        <span class="swal-label" style="font-size:12px;">กะการทำงาน:</span>
+                        <span class="swal-value" style="color:var(--primary); font-size:14px;">${displayShift.split(' ')[0]}</span>
+                    </div>
+                    <div class="swal-row">
+                        <span class="swal-label" style="font-size:12px;">สถานะ:</span>
+                        ${statusBadgeHtml}
+                    </div>
+                    <div style="margin-top: 15px; text-align: center; border-top: 1px dotted #e2e8f0; padding-top: 15px;">
+                        <span class="swal-label" style="display:block; margin-bottom: 8px; font-size: 11px;">Recorded By:</span>
+                        <div class="swal-pill" style="font-size:13px;">
+                            <i class="fa-solid fa-user"></i> ${payload.recorder}
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; color:#64748b; font-size:13px;">ยืนยันการบันทึกข้อมูลนี้หรือไม่?</div>
+            `;
+
+            Swal.fire({
+                title: 'Confirm Save?',
+                icon: 'question',
+                html: confirmHtml,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-solid fa-check"></i> ยืนยัน',
+                cancelButtonText: '<i class="fa-solid fa-xmark"></i> ยกเลิก',
+                reverseButtons: false,
+                width: '400px', 
+                customClass: { 
+                    popup: 'custom-swal-popup', 
+                    title: 'custom-swal-title', 
+                    confirmButton: 'custom-confirm-btn', 
+                    cancelButton: 'custom-cancel-btn',
+                    icon: 'custom-swal-icon' 
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    
+                    if (typeof google !== 'undefined' && google.script && google.script.run) {
+                        try {
+                            if(type === 'in') {
+                                google.script.run
+                                    .withSuccessHandler(() => successAction(type))
+                                    .withFailureHandler(err => {
+                                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้', customClass: { popup: 'custom-swal-popup' } });
+                                    })
+                                    .processCheckInSenior(payload);
+                            } else {
+                                google.script.run
+                                    .withSuccessHandler(() => successAction(type))
+                                    .withFailureHandler(err => {
+                                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้', customClass: { popup: 'custom-swal-popup' } });
+                                    })
+                                    .processCheckOutSenior(payload);
+                            }
+                        } catch(e) {
+                            Swal.fire('Error', e.message, 'error');
+                        }
+                    } else {
+                        setTimeout(() => successAction(type), 1000); 
+                    }
+                }
+            });
+        }
+
+        function successAction(type) {
+            Swal.fire({
+                icon: 'success', 
+                title: 'Saved Successfully',
+                text: 'บันทึกข้อมูลเรียบร้อยแล้ว',
+                timer: 1500, 
+                showConfirmButton: false,
+                width: '350px',
+                customClass: { popup: 'custom-swal-popup', icon: 'custom-swal-icon' }
+            }).then(() => {
+                try {
+                    closeModal(type);
+                    silentReloadData();
+                } catch(e) {
+                    console.error(e);
+                }
+            });
+        }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overview Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        .font-prompt { font-family: 'Prompt', sans-serif !important; }
+        
+        /* Card Hover Effect */
+        .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); }
+
+        /* Chart Containers */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .chart-container-tall { position: relative; height: 350px; width: 100%; }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-8 text-slate-700">
+
+    <div class="max-w-[1600px] mx-auto space-y-6">
+
+        <!-- Header -->
+        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100/80">
+            <div class="flex items-center gap-5">
+                <div class="h-14 w-14 rounded-full bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-md">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight uppercase">Overview Dashboard</h1>
+                    <p class="text-sm text-slate-500 font-medium flex items-center gap-2 mt-1" id="last-update-text">
+                        อัปเดตข้อมูลล่าสุด: กำลังโหลด...
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="loadData()" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> รีเฟรชข้อมูล
+                </button>
+            </div>
+        </div>
+
+        <!-- 1. Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <!-- Total -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex items-center justify-between">
+                <div>
+                    <p class="text-[12px] text-slate-500 font-bold mb-1 uppercase tracking-wider">งานทั้งหมด (Total)</p>
+                    <h3 class="text-4xl font-bold text-slate-800" id="card-total">0</h3>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-list-ul"></i>
+                </div>
+            </div>
+            <!-- Pending -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex items-center justify-between">
+                <div>
+                    <p class="text-[12px] text-amber-500 font-bold mb-1 uppercase tracking-wider">รอดำเนินการ (Pending)</p>
+                    <h3 class="text-4xl font-bold text-amber-600" id="card-pending">0</h3>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+            </div>
+            <!-- In Progress -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex items-center justify-between">
+                <div>
+                    <p class="text-[12px] text-sky-500 font-bold mb-1 uppercase tracking-wider">กำลังดำเนินการ (In Progress)</p>
+                    <h3 class="text-4xl font-bold text-sky-600" id="card-progress">0</h3>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-person-digging"></i>
+                </div>
+            </div>
+            <!-- Completed -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex items-center justify-between">
+                <div>
+                    <p class="text-[12px] text-emerald-500 font-bold mb-1 uppercase tracking-wider">เสร็จสิ้น (Completed)</p>
+                    <h3 class="text-4xl font-bold text-emerald-600" id="card-completed">0</h3>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Main Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 15 Days Trend Chart -->
+            <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80">
+                <div class="mb-4">
+                    <h2 class="text-[16px] font-bold text-slate-800"><i class="fa-solid fa-chart-line text-indigo-500 mr-2"></i>สถิติรับงานเข้า 15 วันย้อนหลัง</h2>
+                    <p class="text-[12px] text-slate-500">จำนวนงานที่แจ้งเข้ามาในระบบแต่ละวัน (อ้างอิงจากวันที่แจ้งงาน)</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Work Group Doughnut -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80">
+                <div class="mb-4 text-center">
+                    <h2 class="text-[16px] font-bold text-slate-800"><i class="fa-solid fa-chart-pie text-indigo-500 mr-2"></i>สัดส่วนประเภทงาน</h2>
+                    <p class="text-[12px] text-slate-500">แบ่งตามกลุ่มงาน (โครงสร้าง / เครื่องเย็น)</p>
+                </div>
+                <div class="chart-container flex justify-center">
+                    <canvas id="groupChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Bottom Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Tasks by Assignee / Zone -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80">
+                <div class="mb-4">
+                    <h2 class="text-[16px] font-bold text-slate-800"><i class="fa-solid fa-users text-indigo-500 mr-2"></i>ปริมาณงานจำแนกตามผู้รับผิดชอบ (Zone)</h2>
+                    <p class="text-[12px] text-slate-500">แสดงโซนที่มีปริมาณงานในระบบมากที่สุด</p>
+                </div>
+                <div class="chart-container-tall">
+                    <canvas id="zoneChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Tasks Table -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/80 flex flex-col">
+                <div class="mb-4">
+                    <h2 class="text-[16px] font-bold text-slate-800"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>5 งานล่าสุดที่ดึงเข้าระบบ</h2>
+                    <p class="text-[12px] text-slate-500">อ้างอิงจากเวลา Pull Time ล่าสุด</p>
+                </div>
+                <div class="overflow-x-auto grow">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="text-[11px] text-slate-400 font-bold uppercase bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="px-4 py-3">Task No.</th>
+                                <th class="px-4 py-3">สาขา</th>
+                                <th class="px-4 py-3">สถานะ</th>
+                                <th class="px-4 py-3 text-right">เวลาดึงงาน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-table-body" class="divide-y divide-slate-50">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        let allTasks = [];
+        let trendChartObj = null;
+        let groupChartObj = null;
+        let zoneChartObj = null;
+
+        document.addEventListener('DOMContentLoaded', loadData);
+
+        function getStatusGroup(status) {
+            if (!status) return "รอดำเนินการ";
+            if (status === "งานเสร็จแล้ว") return "เสร็จสิ้น";
+            if (status === "งานยกเลิก") return "ยกเลิก";
+            if (status.startsWith("_0") || status.startsWith("_2") || status.startsWith("_3") || status.startsWith("_4")) return "รอดำเนินการ";
+            if (status.startsWith("_5") || status.startsWith("_6") || status.startsWith("_7")) return "ดำเนินการ";
+            return "รอดำเนินการ";
+        }
+
+        function loadData() {
+            document.getElementById('last-update-text').innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปเดตข้อมูล...`;
+
+            if (typeof google === 'undefined') {
+                // Mock Data for Testing
+                allTasks = generateMockData();
+                setTimeout(() => { processDashboard(); }, 500);
+                return;
+            }
+
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    allTasks = res.data;
+                    processDashboard();
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).getAssignedTasksData();
+        }
+
+        function processDashboard() {
+            document.getElementById('last-update-text').innerHTML = `<i class="fa-solid fa-check text-emerald-500"></i> อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`;
+
+            // 1. Calculate Summary Cards
+            let stats = { pending: 0, progress: 0, completed: 0, cancelled: 0, total: allTasks.length };
+            
+            allTasks.forEach(t => {
+                const sGroup = getStatusGroup(t.wfStatus);
+                if(sGroup === "รอดำเนินการ") stats.pending++;
+                else if(sGroup === "ดำเนินการ") stats.progress++;
+                else if(sGroup === "เสร็จสิ้น") stats.completed++;
+                else if(sGroup === "ยกเลิก") stats.cancelled++;
+            });
+
+            document.getElementById('card-total').textContent = stats.total;
+            document.getElementById('card-pending').textContent = stats.pending;
+            document.getElementById('card-progress').textContent = stats.progress;
+            document.getElementById('card-completed').textContent = stats.completed;
+
+            // 2. Render Charts & Table
+            renderTrendChart();
+            renderGroupChart();
+            renderZoneChart();
+            renderRecentTable();
+        }
+
+        // --- Render Trend Chart (15 Days) ---
+        function renderTrendChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            // สร้าง Array วันที่ 15 วันย้อนหลัง
+            const dates = [];
+            const counts = [];
+            const today = new Date();
+            
+            for (let i = 14; i >= 0; i--) {
+                let d = new Date(today);
+                d.setDate(today.getDate() - i);
+                
+                // Format dd/mm/yyyy
+                let day = String(d.getDate()).padStart(2, '0');
+                let month = String(d.getMonth() + 1).padStart(2, '0');
+                let year = d.getFullYear(); // Assuming data year is 2026 or current
+                
+                let dateStrForDisplay = `${day}/${month}`;
+                let dateStrForMatch = `${day}/${month}/${year}`;
+                
+                // ถ้าระบบ Mock Data เป็นปี 2026 แต่ปีปัจจุบันคือ 2024 อาจจะดึงไม่เจอ
+                // ตรงนี้ผมใช้ Includes ง่ายๆ สำหรับตรวจหา "dd/MM"
+                
+                dates.push(dateStrForDisplay);
+                
+                // นับจำนวน Task ที่มี ReportDate ตรงกับวันที่นี้
+                let count = allTasks.filter(t => t.reportDate && t.reportDate.startsWith(`${day}/${month}`)).length;
+                counts.push(count);
+            }
+
+            if (trendChartObj) trendChartObj.destroy();
+
+            trendChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'จำนวนงานรับเข้า',
+                        data: counts,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgb(79, 70, 229)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        order: 2
+                    }, {
+                        label: 'แนวโน้ม (Trend)',
+                        data: counts,
+                        type: 'line',
+                        borderColor: 'rgb(245, 158, 11)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointBackgroundColor: 'rgb(245, 158, 11)',
+                        order: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- Render Work Group Doughnut Chart ---
+        function renderGroupChart() {
+            const ctx = document.getElementById('groupChart').getContext('2d');
+            
+            let structCount = 0;
+            let coolCount = 0;
+            let otherCount = 0;
+
+            allTasks.forEach(t => {
+                if(t.workGroup === 'งานโครงสร้าง') structCount++;
+                else if(t.workGroup === 'งานเครื่องเย็น') coolCount++;
+                else otherCount++;
+            });
+
+            if (groupChartObj) groupChartObj.destroy();
+
+            groupChartObj = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['งานโครงสร้าง', 'งานเครื่องเย็น', 'อื่นๆ'],
+                    datasets: [{
+                        data: [structCount, coolCount, otherCount],
+                        backgroundColor: [
+                            'rgba(99, 102, 241, 0.8)', // Indigo
+                            'rgba(16, 185, 129, 0.8)', // Emerald
+                            'rgba(148, 163, 184, 0.8)' // Slate
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+                    }
+                }
+            });
+        }
+
+        // --- Render Zone (Assignee) Bar Chart ---
+        function renderZoneChart() {
+            const ctx = document.getElementById('zoneChart').getContext('2d');
+            
+            // นับจำนวนงานแต่ละโซน
+            const zoneMap = {};
+            allTasks.forEach(t => {
+                let name = t.assignZone || 'ยังไม่ระบุ';
+                if(name.includes(' - ')) name = name.split(' - ')[1].trim(); // เอาแค่ชื่อ
+                zoneMap[name] = (zoneMap[name] || 0) + 1;
+            });
+
+            // แปลงเป็น Array แล้วเรียงลำดับจากมากไปน้อย (เอา Top 10)
+            const sortedZones = Object.entries(zoneMap)
+                                      .sort((a, b) => b[1] - a[1])
+                                      .slice(0, 10);
+            
+            const labels = sortedZones.map(item => item[0]);
+            const data = sortedZones.map(item => item[1]);
+
+            if (zoneChartObj) zoneChartObj.destroy();
+
+            zoneChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'จำนวนงาน',
+                        data: data,
+                        backgroundColor: 'rgba(56, 189, 248, 0.8)', // Sky
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // เปลี่ยนเป็นแนวนอน
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { precision: 0 } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- Render Recent Tasks Table ---
+        function renderRecentTable() {
+            const tbody = document.getElementById('recent-table-body');
+            
+            // เรียงลำดับตาม pullTime (สมมติว่าเป็น format วันที่/เวลา ที่ซอร์ทได้)
+            // หรือใช้ rowId ย้อนหลัง (ล่าสุดมาก่อน)
+            const sortedTasks = [...allTasks].sort((a, b) => b.rowId - a.rowId).slice(0, 5);
+
+            if(sortedTasks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">ไม่มีข้อมูล</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = sortedTasks.map(t => {
+                const sGroup = getStatusGroup(t.wfStatus);
+                let badge = '';
+                if(sGroup === "รอดำเนินการ") badge = `<span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded text-[10px] font-bold">รอดำเนินการ</span>`;
+                else if(sGroup === "ดำเนินการ") badge = `<span class="bg-sky-50 text-sky-600 px-2 py-0.5 rounded text-[10px] font-bold">ดำเนินการ</span>`;
+                else if(sGroup === "เสร็จสิ้น") badge = `<span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">เสร็จสิ้น</span>`;
+                else badge = `<span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold">ยกเลิก</span>`;
+
+                let timeStr = t.pullTime || '-';
+                if(timeStr.length > 10 && timeStr.includes(' ')) {
+                    const p = timeStr.split(' ');
+                    timeStr = `<span class="text-slate-600">${p[0]}</span> <span class="text-slate-400 text-[10px]">${p[1]}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50 border-b border-slate-50">
+                        <td class="px-4 py-3 font-bold text-slate-700 text-[12px]">${t.taskNo}</td>
+                        <td class="px-4 py-3 text-[11px] truncate max-w-[120px]" title="${t.branchName}">${t.branchName}</td>
+                        <td class="px-4 py-3">${badge}</td>
+                        <td class="px-4 py-3 text-[11px] text-right">${timeStr}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- Helper: Generate Mock Data ---
+        function generateMockData() {
+            let mock = [];
+            const today = new Date();
+            const groups = ["งานโครงสร้าง", "งานเครื่องเย็น"];
+            const zones = ["12345 - สมชาย ใจดี", "99999 - สมหญิง รักดี", "11111 - อำนาจ มั่นคง", "22222 - นิภา สุขใจ", "33333 - ธนัท เย็นใจ"];
+            const statuses = ["_00_รอจ่ายงาน", "_41_รอพิจารณาราคา", "_60_ส่งผู้รับเหมาเข้างานซ่อม", "งานเสร็จแล้ว", "งานยกเลิก", "_75_รอตรวจรับงาน"];
+
+            for(let i=1; i<=80; i++) {
+                // สุ่มวันที่ย้อนหลัง 0-14 วัน
+                let d = new Date(today);
+                d.setDate(today.getDate() - Math.floor(Math.random() * 15));
+                let day = String(d.getDate()).padStart(2, '0');
+                let month = String(d.getMonth() + 1).padStart(2, '0');
+                
+                mock.push({
+                    rowId: i + 1,
+                    taskNo: `TSK-2026-${String(i).padStart(3, '0')}`,
+                    branchName: `00${Math.floor(Math.random()*90)+10}-สาขาทดสอบ`,
+                    workGroup: groups[Math.random() > 0.6 ? 1 : 0], // โครงสร้างเยอะกว่า
+                    wfStatus: statuses[Math.floor(Math.random() * statuses.length)],
+                    reportDate: `${day}/${month}/2026`,
+                    assignZone: zones[Math.floor(Math.random() * zones.length)],
+                    pullTime: `${day}/${month}/2026 10:00:00`
+                });
+            }
+            return mock;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Tasks Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- TomSelect (For searchable dropdowns) -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        div:where(.swal2-container) { font-family: 'Prompt', sans-serif !important; }
+        .swal2-popup, .swal2-title, .swal2-html-container, .swal2-confirm, .swal2-cancel, .swal2-content { 
+            font-family: 'Prompt', sans-serif !important; 
+        }
+        .swal2-html-container { margin: 0 !important; padding: 0 !important; overflow: hidden; }
+        .font-prompt { font-family: 'Prompt', sans-serif !important; }
+        
+        th { white-space: nowrap; }
+        td { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 250px; }
+        
+        .date-toggle-btn { background-color: white; color: #64748b; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
+        .date-toggle-btn:hover { background-color: #f8fafc; color: #334155; }
+        .date-toggle-btn.active { background-color: #1e293b; color: white; border-color: #1e293b; }
+
+        /* ปรับสีปุ่ม My Tasks เป็นธีมสี Indigo สำหรับงาน Low */
+        .my-task-btn { background-color: white; color: #4f46e5; border: 1px solid #e0e7ff; transition: all 0.2s ease; }
+        .my-task-btn:hover { background-color: #eef2ff; }
+        .my-task-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Tom Select Tailwind Override ธีมสี Indigo */
+        .ts-wrapper { font-family: 'Prompt', sans-serif !important; }
+        .ts-control { 
+            border-radius: 0.5rem !important; 
+            border: 1px solid #cbd5e1 !important; 
+            padding: 0.5rem 0.75rem !important; 
+            min-height: 42px !important; 
+            background-color: white !important;
+            box-shadow: none !important;
+            color: #334155 !important;
+        }
+        .ts-wrapper.focus .ts-control { 
+            border-color: #4f46e5 !important; 
+            box-shadow: 0 0 0 1px #4f46e5 !important; 
+        }
+
+        /* --- Custom padding เพื่อเว้นระยะไม่ให้ทับ Icon --- */
+        .custom-ts-container .ts-control {
+            padding-left: 2.75rem !important; 
+            background-color: #f8fafc !important;
+            border-radius: 0.75rem !important;
+            border: 1px solid #e2e8f0 !important; 
+            min-height: 46px !important; 
+        }
+        .custom-ts-container .ts-control .item {
+            text-align: left !important;
+            margin-left: 0 !important;
+        }
+
+        .ts-dropdown { 
+            border-radius: 0.5rem !important; 
+            border: 1px solid #e2e8f0 !important; 
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important; 
+            margin-top: 4px !important; 
+        }
+        .ts-dropdown .ts-dropdown-content { padding: 4px !important; }
+        .ts-dropdown .option { 
+            padding: 8px 12px !important; 
+            border-radius: 4px !important; 
+            cursor: pointer !important; 
+            transition: all 0.2s !important; 
+            color: #475569 !important;
+        }
+        .ts-dropdown .option.active, .ts-dropdown .option:hover { 
+            background-color: #e0e7ff !important; 
+            color: #4f46e5 !important; 
+            font-weight: 500 !important; 
+        }
+        .ts-control > input { font-family: 'Prompt', sans-serif !important; font-size: 14px !important; }
+        
+        .ts-wrapper.disabled .ts-control {
+            opacity: 0.4;
+            background-color: #f1f5f9 !important;
+        }
+        
+        /* Summary Card Interactive Styles */
+        .summary-card { cursor: pointer; transition: all 0.2s ease; }
+        .summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .summary-card:active { transform: translateY(0); }
+        
+        @keyframes progress { 0% { width: 0%; } 100% { width: 100%; } }
+    </style>
+</head>
+<body class="p-2 md:p-4 text-slate-700 min-h-screen flex flex-col">
+
+    <div class="w-full mx-auto space-y-4 flex-1 flex flex-col">
+
+        <!-- Header Dashboard Section -->
+        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-5 md:px-6 md:py-5 rounded-2xl shadow-sm border border-slate-100/80">
+            <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-full bg-slate-900 text-white flex items-center justify-center text-xl shadow-md">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
+                        Low Tasks Dashboard
+                        <span id="last-update-time" class="text-[13px] font-medium text-slate-400 normal-case tracking-normal">วางงานล่าสุด วันที่ -</span>
+                    </h1>
+                    <p class="text-[12px] text-emerald-500 font-medium flex items-center gap-2 mt-0.5">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        SYSTEM LIVE (Auto-Refresh)
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 w-full xl:w-auto">
+                <div id="card-all" onclick="window.setCardFilter('all')" class="summary-card border-l-[3px] border-slate-700 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3 ring-2 ring-offset-2 ring-slate-400 scale-[1.02]">
+                    <p class="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-wider">Total Tasks</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl font-bold text-slate-800 leading-none" id="stat-total">0</span>
+                        <span class="text-[10px] text-slate-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div id="card-today" onclick="window.setCardFilter('today')" class="summary-card border-l-[3px] border-amber-400 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-amber-500 font-bold mb-1 uppercase tracking-wider">Today</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl font-bold text-amber-600 leading-none" id="stat-today">0</span>
+                        <span class="text-[10px] text-amber-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div id="card-other" onclick="window.setCardFilter('other')" class="summary-card border-l-[3px] border-sky-400 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-sky-500 font-bold mb-1 uppercase tracking-wider">Other Days</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl font-bold text-sky-600 leading-none" id="stat-other">0</span>
+                        <span class="text-[10px] text-sky-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div id="card-mine" onclick="window.setCardFilter('mine')" class="summary-card border-l-[3px] border-indigo-500 bg-indigo-50/40 border border-indigo-100/50 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-indigo-500 font-bold mb-1 uppercase tracking-wider">My Tasks</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl font-bold text-indigo-600 leading-none" id="stat-mine">0</span>
+                        <span class="text-[10px] text-indigo-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-100/80 space-y-4">
+            <div class="flex flex-col xl:flex-row gap-4 items-center justify-between">
+                
+                <div class="flex flex-col md:flex-row gap-4 w-full xl:flex-1">
+                    <div class="relative w-full md:flex-1 md:max-w-xl">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                        <input type="text" id="filter-search" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-slate-500 focus:border-slate-500 block w-full pl-11 p-3 transition-colors placeholder-slate-400" placeholder="ค้นหา Task No, ชื่อสาขา, จังหวัด, ปัญหา...">
+                    </div>
+
+                    <div class="relative w-full md:w-[320px] custom-ts-container">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400 z-10">
+                            <i class="fa-solid fa-user-tag"></i>
+                        </div>
+                        <select id="filter-emp" class="w-full text-sm" placeholder="Search Assignees...">
+                            <option value="">All Assignees...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+                    
+                    <button id="btn-my-tasks" class="my-task-btn px-5 py-2.5 text-sm font-semibold rounded-xl flex items-center gap-2 w-full sm:w-auto justify-center">
+                        <i class="fa-solid fa-user-check"></i> My Tasks
+                    </button>
+
+                    <div class="flex rounded-xl shadow-sm w-full sm:w-auto" role="group">
+                        <button type="button" id="btn-date-all" class="date-toggle-btn active px-5 py-2.5 text-sm font-medium rounded-l-xl border-r-0">
+                            All
+                        </button>
+                        <button type="button" id="btn-date-day" class="date-toggle-btn px-5 py-2.5 text-sm font-medium border-r-0">
+                            Day
+                        </button>
+                        <button type="button" id="btn-date-range" class="date-toggle-btn px-5 py-2.5 text-sm font-medium rounded-r-xl">
+                            Range
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="date-picker-container" class="hidden pt-4 border-t border-slate-100 flex-wrap gap-4 items-center justify-end">
+                <div id="single-date-wrap" class="hidden flex items-center gap-3">
+                    <span class="text-sm text-slate-500 font-medium">เลือกวันที่:</span>
+                    <input type="date" id="input-date-single" class="bg-white border border-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-slate-500 focus:border-slate-500 text-slate-700">
+                </div>
+                
+                <div id="range-date-wrap" class="hidden flex items-center gap-3">
+                    <span class="text-sm text-slate-500 font-medium">ตั้งแต่:</span>
+                    <input type="date" id="input-date-start" class="bg-white border border-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-slate-500 focus:border-slate-500 text-slate-700">
+                    <span class="text-sm text-slate-500 font-medium">ถึง:</span>
+                    <input type="date" id="input-date-end" class="bg-white border border-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-slate-500 focus:border-slate-500 text-slate-700">
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden flex-1 flex flex-col">
+            <div class="overflow-x-auto w-full flex-1">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider bg-slate-50/80 border-b border-slate-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-4">Date</th>
+                            <th scope="col" class="px-6 py-4">Task ID</th>
+                            <th scope="col" class="px-6 py-4">Branch / Province</th>
+                            <th scope="col" class="px-6 py-4 w-[250px] max-w-[300px]">Catalog / Issue</th>
+                            <th scope="col" class="px-6 py-4">Status</th>
+                            <th scope="col" class="px-6 py-4">Assignee</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-50">
+                        <tr>
+                            <td colspan="6" class="px-6 py-16 text-center text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-slate-300"></i><br>
+                                กำลังโหลดข้อมูล...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="bg-white px-6 py-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                <div class="text-sm text-slate-500 font-medium" id="page-info">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-prev" class="h-9 w-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <div id="page-numbers" class="flex gap-1 text-sm font-medium"></div>
+                    <button id="btn-next" class="h-9 w-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        if (typeof google === 'undefined') {
+            window.google = { script: { run: {
+                withSuccessHandler: function(fn) { this._s = fn; return this; },
+                withFailureHandler: function(fn) { this._f = fn; return this; },
+                getLowPageData: function() { setTimeout(() => { this._s({ success: true, data: generateMockData(), currentUserInfo: "12345 - สมชาย ใจดี", lastUpdateTime: "16/04/2026 14:30:00" }); }, 500); },
+                getDropdownDataForTasks: function() { setTimeout(() => { this._s({ success: true, data: [{repairType: 'Network', subRepairType: 'Internet Down', forwardStatus: 'Wait Infra', typeAsset: 'Router'}] }); }, 500); },
+                saveTeamAction: function(payload) { setTimeout(() => { this._s({ success: true, message: "บันทึกไปที่ Sheet Assigned_Tasks สำเร็จ!" }); }, 800); },
+                getAllBranchHistoryMap: function() { 
+                    setTimeout(() => { 
+                        this._s({ 
+                            success: true, 
+                            data: {
+                                "สาขาสยาม": {
+                                    count: 3,
+                                    data: [
+                                        {date: "10/04/2026 09:30:00", catalog: "Network", detail: "เน็ตหลุดบ่อยมาก บางทีใช้งานไม่ได้เลย", issue: "อินเทอร์เน็ตมีปัญหา", taskNo: "TSK-001"},
+                                        {date: "12/04/2026 14:20:00", catalog: "Hardware", detail: "จอฟ้าตอนบูทเครื่อง", issue: "คอมพัง", taskNo: "TSK-002"}
+                                    ]
+                                }
+                            } 
+                        }); 
+                    }, 500); 
+                },
+                getBranchDetailsByCode: function(code) {
+                    setTimeout(() => { 
+                        if(code === '1111') {
+                            this._s({ success: true, data: { name: "สาขาสยามพารากอน", province: "กรุงเทพมหานคร", phone: "02-123-4567" } });
+                        } else {
+                            this._s({ success: false, message: "ไม่พบรหัสสาขานี้ในระบบ" });
+                        }
+                    }, 500); 
+                }
+            }}};
+            
+            function generateMockData() {
+                let mockArray = new Array(19).fill(""); 
+                mockArray[18] = "ASSET-10293"; 
+                return [
+                    { empId: "12345", empName: "สมชาย ใจดี", highLow: "LOW", taskNo: "TSK-001", createBy: "UserA", branchName: "สาขาสยาม", detail: "ระบบช้ามาก", workGroup: "IT", catalogSub: "Network", issue: "ช้าผิดปกติ", reportDate: "15/04/2026", createTime: "10:00", dueDate: "16/04/2026", dueTime: "10:00", province: "กรุงเทพ", phone: "02-111-2222", assignee: "12345 - สมชาย ใจดี", rawData: mockArray },
+                    { empId: "12345", empName: "สมชาย ใจดี", highLow: "LOW", taskNo: "TSK-002", createBy: "UserB", branchName: "-", detail: "ไม่มีชื่อสาขามาให้ ทดสอบระบบค้นหา", workGroup: "IT", catalogSub: "Hardware", issue: "ทดสอบสาขาว่าง", reportDate: "15/04/2026", createTime: "11:00", dueDate: "16/04/2026", dueTime: "11:00", province: "-", phone: "-", assignee: "12345 - สมชาย ใจดี", rawData: mockArray }
+                ];
+            }
+        }
+
+        let allData = [];
+        let filteredData = [];
+        let dropdownData = []; 
+        let branchHistoryCache = {}; 
+        
+        let currentUserInfo = "";
+        let currentEmpName = "";
+        let currentEmpId = "";
+        
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        
+        let dateMode = 'all'; 
+        let cardFilterMode = 'all'; 
+        let isMyTasksOnly = false;
+        
+        let tsFilterEmp; 
+        let currentViewingTaskNo = null;
+        let clockInterval = null;
+        let currentFoundBranch = null; // ตัวแปรเก็บข้อมูลสาขาที่ค้นหาเจอ
+
+        const elTableBody = document.getElementById('table-body');
+        const elFilterSearch = document.getElementById('filter-search');
+        const btnMyTasks = document.getElementById('btn-my-tasks');
+        
+        const btnDateAll = document.getElementById('btn-date-all');
+        const btnDateDay = document.getElementById('btn-date-day');
+        const btnDateRange = document.getElementById('btn-date-range');
+        
+        const datePickerContainer = document.getElementById('date-picker-container');
+        const singleDateWrap = document.getElementById('single-date-wrap');
+        const rangeDateWrap = document.getElementById('range-date-wrap');
+        
+        const inputDateSingle = document.getElementById('input-date-single');
+        const inputDateStart = document.getElementById('input-date-start');
+        const inputDateEnd = document.getElementById('input-date-end');
+        
+        const statTotal = document.getElementById('stat-total');
+        const statToday = document.getElementById('stat-today');
+        const statOther = document.getElementById('stat-other');
+        const statMine = document.getElementById('stat-mine');
+        
+        const pageInfo = document.getElementById('page-info');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            tsFilterEmp = new TomSelect("#filter-emp", {
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                placeholder: "Search Assignees...",
+                onChange: function(value) {
+                    applyFilters();
+                }
+            });
+
+            fetchData();
+            fetchDropdownData();
+            fetchAllBranchHistory(); 
+            
+            setInterval(fetchDataSilent, 30000);
+        });
+
+        function showToast(message, type = 'warning') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-5 right-5 z-[9999] px-6 py-3 rounded-xl shadow-lg border transform transition-all duration-300 translate-x-[120%] opacity-0 flex items-center gap-3 ${type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'warning' ? 'fa-triangle-exclamation text-amber-500' : 'fa-circle-xmark text-rose-500'} text-xl"></i>
+                <div class="font-prompt font-medium text-sm">${message}</div>
+            `;
+            document.body.appendChild(toast);
+            
+            toast.offsetHeight;
+            toast.classList.remove('translate-x-[120%]', 'opacity-0');
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-[120%]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ==========================================
+        // Data Fetching
+        // ==========================================
+        function fetchAllBranchHistory() {
+            google.script.run
+                .withSuccessHandler((res) => {
+                    if (res.success) {
+                        branchHistoryCache = res.data;
+                        
+                        if (currentViewingTaskNo) {
+                            const task = allData.find(t => t.taskNo === currentViewingTaskNo);
+                            if (task) {
+                                // เช็คว่ากำลังใช้ชื่อสาขาใหม่ที่ค้นหาเจอ หรือใช้ชื่อสาขาเดิม
+                                const branchNameStr = currentFoundBranch ? currentFoundBranch.name : String(task.branchName).trim();
+                                const branchHistory = branchHistoryCache[branchNameStr] || { count: 0, data: [] };
+                                
+                                const countEl = document.getElementById('history-count');
+                                if (countEl) countEl.innerText = branchHistory.count;
+                                
+                                const btnToggle = document.getElementById('btn-toggle-history');
+                                if (btnToggle) btnToggle.disabled = (branchHistory.count === 0);
+                                
+                                const btnFilter = document.getElementById('btn-filter-catalog');
+                                let filterCatalog = null;
+                                if (btnFilter && btnFilter.classList.contains('filtered')) {
+                                    filterCatalog = task.catalogSub;
+                                }
+                                
+                                window.renderHistoryItems(branchNameStr, filterCatalog);
+                            }
+                        }
+                    }
+                })
+                .getAllBranchHistoryMap();
+        }
+
+        function fetchData() {
+            google.script.run
+                .withSuccessHandler((res) => {
+                    if (res.success) {
+                        allData = Array.isArray(res.data) ? res.data : []; 
+                        currentUserInfo = res.currentUserInfo || "";
+                        parseUserInfo();
+                        
+                        if (res.lastUpdateTime && res.lastUpdateTime !== "-") {
+                            document.getElementById('last-update-time').innerHTML = `<i class="fa-regular fa-clock mr-1 text-slate-300"></i> วางงานล่าสุด วันที่ ${res.lastUpdateTime}`;
+                        }
+                        
+                        applyFilters();
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', res.message, 'error');
+                        elTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-6 text-center text-red-500">${res.message}</td></tr>`;
+                    }
+                })
+                .withFailureHandler((err) => {
+                    Swal.fire('ข้อผิดพลาดระบบ', err.message, 'error');
+                })
+                .getLowPageData();
+        }
+
+        function fetchDataSilent() {
+            google.script.run
+                .withSuccessHandler((res) => {
+                    if (res.success) {
+                        allData = Array.isArray(res.data) ? res.data : [];
+                        currentUserInfo = res.currentUserInfo || "";
+                        parseUserInfo();
+                        
+                        if (res.lastUpdateTime && res.lastUpdateTime !== "-") {
+                            document.getElementById('last-update-time').innerHTML = `<i class="fa-regular fa-clock mr-1 text-slate-300"></i> วางงานล่าสุด วันที่ ${res.lastUpdateTime}`;
+                        }
+                        
+                        applyFilters(true);
+                        fetchAllBranchHistory(); 
+
+                        if (currentViewingTaskNo) {
+                            const updatedTask = allData.find(t => t.taskNo === currentViewingTaskNo);
+                            if (updatedTask) updateLeftPanelLive(updatedTask);
+                        }
+                    }
+                })
+                .getLowPageData();
+        }
+
+        function fetchDropdownData() {
+            google.script.run
+                .withSuccessHandler((res) => { if(res.success) dropdownData = res.data; })
+                .getDropdownDataForTasks();
+        }
+
+        function parseUserInfo() {
+            if(currentUserInfo.includes(' - ')) {
+                currentEmpId = currentUserInfo.split(' - ')[0].trim();
+                currentEmpName = currentUserInfo.split(' - ')[1].trim();
+            } else {
+                currentEmpId = "";
+                currentEmpName = currentUserInfo.trim();
+            }
+        }
+
+        function parseDate(dateStr) {
+            if(!dateStr) return null;
+            if(dateStr.includes('/')) {
+                let p = dateStr.split('/');
+                if(p.length === 3) return new Date(p[2], p[1]-1, p[0]).setHours(0,0,0,0);
+            }
+            let d = new Date(dateStr);
+            if(!isNaN(d.getTime())) return d.setHours(0,0,0,0);
+            return null;
+        }
+
+        function parseDateTimeStr(dtStr) {
+            if(!dtStr) return 0;
+            const parts = dtStr.trim().split(' ');
+            if(parts.length < 2) return 0;
+            const dParts = parts[0].split('/');
+            const tParts = parts[1].split(':');
+            if(dParts.length === 3) {
+                return new Date(dParts[2], dParts[1]-1, dParts[0], tParts[0]||0, tParts[1]||0, tParts[2]||0).getTime();
+            }
+            return 0;
+        }
+
+        // ==========================================
+        // Filters & Table Render
+        // ==========================================
+        window.setCardFilter = function(mode) {
+            cardFilterMode = mode;
+            document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('ring-2', 'ring-offset-2', 'scale-[1.02]', 'ring-slate-400', 'ring-amber-400', 'ring-sky-400', 'ring-indigo-400'));
+            
+            let colorClass = '';
+            if(mode === 'all') colorClass = 'ring-slate-400';
+            if(mode === 'today') colorClass = 'ring-amber-400';
+            if(mode === 'other') colorClass = 'ring-sky-400';
+            if(mode === 'mine') colorClass = 'ring-indigo-400';
+
+            const cardObj = document.getElementById(`card-${mode}`);
+            if(cardObj) cardObj.classList.add('ring-2', 'ring-offset-2', 'scale-[1.02]', colorClass);
+            
+            applyFilters();
+        }
+
+        function applyFilters(isSilent = false) {
+            if (!Array.isArray(allData)) allData = []; 
+            
+            const search = elFilterSearch.value.toLowerCase();
+            const selectedEmp = tsFilterEmp.getValue();
+            
+            const singleTime = inputDateSingle.value ? new Date(inputDateSingle.value).setHours(0,0,0,0) : null;
+            const startTime = inputDateStart.value ? new Date(inputDateStart.value).setHours(0,0,0,0) : null;
+            const endTime = inputDateEnd.value ? new Date(inputDateEnd.value).setHours(23,59,59,999) : null;
+
+            const normName = currentEmpName ? currentEmpName.replace(/\s+/g, '').toLowerCase() : '';
+            const normId = currentEmpId ? currentEmpId.toLowerCase() : '';
+
+            let preEmpFilterData = allData.filter(row => {
+                let actualName = row.empName || ''; 
+                let assignee = row.assignee || '';
+                
+                let targetText = `${actualName} ${assignee}`.replace(/\s+/g, '').toLowerCase();
+                let isMyTask = false;
+                if (normName && targetText.includes(normName)) isMyTask = true;
+                if (normId && targetText.includes(normId)) isMyTask = true;
+
+                if (isMyTasksOnly && !isMyTask) return false;
+
+                if (search) {
+                    const provinceVal = row.province || (row.rawData && row.rawData[14]) || '';
+                    const combinedText = `${row.taskNo} ${row.branchName} ${provinceVal} ${row.catalogSub} ${row.issue} ${actualName} ${assignee}`.toLowerCase();
+                    if (!combinedText.includes(search)) return false;
+                }
+
+                if (dateMode !== 'all') {
+                    const rTime = parseDate(row.reportDate);
+                    if(!rTime) return false; 
+                    if (dateMode === 'day' && singleTime) { if (rTime !== singleTime) return false; }
+                    else if (dateMode === 'range') {
+                        if (startTime && rTime < startTime) return false;
+                        if (endTime && rTime > endTime) return false;
+                    }
+                }
+                return true;
+            });
+
+            const empMap = new Map();
+            let unassignedCount = 0;
+            preEmpFilterData.forEach(row => {
+                let actualName = row.empName || '';
+                if(actualName && actualName !== '-') {
+                    if(!empMap.has(actualName)) empMap.set(actualName, { name: actualName, count: 0 });
+                    empMap.get(actualName).count++;
+                } else {
+                    unassignedCount++;
+                }
+            });
+
+            tsFilterEmp.clearOptions();
+            tsFilterEmp.addOption({value: '', text: 'All Assignees...'});
+            const sortedEmps = Array.from(empMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+            sortedEmps.forEach(e => {
+                tsFilterEmp.addOption({value: e.name, text: `${e.name} (${e.count})`});
+            });
+            if (unassignedCount > 0) {
+                tsFilterEmp.addOption({value: 'Unassigned', text: `ไม่ระบุชื่อ/ไม่มีผู้รับผิดชอบ (${unassignedCount})`});
+            }
+            if(selectedEmp) tsFilterEmp.setValue(selectedEmp, true); 
+
+            let baseFilteredData = preEmpFilterData.filter(row => {
+                let actualName = row.empName || '';
+                if (selectedEmp) {
+                    if (selectedEmp === 'Unassigned') {
+                        if (actualName && actualName !== '-') return false;
+                    } else {
+                        if (actualName !== selectedEmp) return false;
+                    }
+                }
+                return true;
+            });
+
+            const todayTimestamp = new Date().setHours(0,0,0,0);
+            let tCount = 0, oCount = 0, mCount = 0;
+
+            baseFilteredData.forEach(row => {
+                const rTime = parseDate(row.reportDate);
+                if (rTime === todayTimestamp) { tCount++; } else { oCount++; }
+                
+                let actualName = row.empName || ''; 
+                let assignee = row.assignee || '';
+                let targetText = `${actualName} ${assignee}`.replace(/\s+/g, '').toLowerCase();
+                let isMyTask = false;
+                
+                if (normName && targetText.includes(normName)) isMyTask = true;
+                if (normId && targetText.includes(normId)) isMyTask = true;
+                
+                if (isMyTask) { mCount++; }
+            });
+
+            statTotal.textContent = baseFilteredData.length;
+            statToday.textContent = tCount;
+            statOther.textContent = oCount;
+            statMine.textContent = mCount;
+
+            filteredData = baseFilteredData.filter(row => {
+                const rTime = parseDate(row.reportDate);
+                let actualName = row.empName || ''; 
+                let assignee = row.assignee || '';
+                
+                let targetText = `${actualName} ${assignee}`.replace(/\s+/g, '').toLowerCase();
+                let isMyTask = false;
+                if (normName && targetText.includes(normName)) isMyTask = true;
+                if (normId && targetText.includes(normId)) isMyTask = true;
+
+                if (cardFilterMode === 'today' && rTime !== todayTimestamp) return false;
+                if (cardFilterMode === 'other' && rTime === todayTimestamp) return false;
+                if (cardFilterMode === 'mine' && !isMyTask) return false;
+                
+                return true;
+            });
+
+            if(!isSilent) currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const totalItems = filteredData.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            
+            if(currentPage > totalPages) currentPage = totalPages;
+            if(currentPage < 1) currentPage = 1;
+
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const currentRows = filteredData.slice(startIdx, endIdx);
+
+            if (currentRows.length === 0) {
+                elTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-16 text-center text-slate-400 bg-slate-50/30"><i class="fa-regular fa-folder-open text-4xl mb-3 text-slate-300"></i><br>ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+                pageInfo.textContent = `Showing 0 to 0 of 0 entries`;
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                return;
+            }
+
+            let html = '';
+            currentRows.forEach((row, index) => {
+                let statusBadge = '';
+                const hL = row.highLow ? row.highLow.toUpperCase() : 'LOW';
+                if(hL === 'HIGH') {
+                    statusBadge = `<span class="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase">${row.highLow}</span>`;
+                } else if(hL === 'LOW') {
+                    statusBadge = `<span class="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase">${row.highLow}</span>`;
+                } else {
+                    statusBadge = `<span class="text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[10px] uppercase">${row.highLow || '-'}</span>`;
+                }
+
+                const assigneeDisplay = `
+                    <div class="flex flex-col">
+                        <span class="text-[13px] font-semibold text-slate-700">${row.empName || '-'}</span>
+                        ${row.empId ? `<span class="text-[10px] text-slate-400">${row.empId}</span>` : ''}
+                    </div>
+                `;
+
+                const prov = row.province || (row.rawData && row.rawData[14]) || '-';
+
+                const normName = currentEmpName ? currentEmpName.replace(/\s+/g, '').toLowerCase() : '';
+                const normId = currentEmpId ? currentEmpId.toLowerCase() : '';
+                let actualName = row.empName || ''; 
+                let assignee = row.assignee || '';
+                let targetText = `${actualName} ${assignee}`.replace(/\s+/g, '').toLowerCase();
+                let isMyTask = false;
+                if (normName && targetText.includes(normName)) isMyTask = true;
+                if (normId && targetText.includes(normId)) isMyTask = true;
+
+                const rowBgClass = isMyTask ? 'bg-yellow-50/80 hover:bg-yellow-100/80' : 'bg-white hover:bg-slate-50';
+
+                html += `
+                    <tr class="${rowBgClass} border-b border-slate-50 transition-colors cursor-pointer" onclick="window.showFullDetails(${startIdx + index})">
+                        <td class="px-6 py-3">
+                            <div class="text-[13px] text-slate-600 font-medium">${row.reportDate || '-'}</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 tracking-wide"><i class="fa-regular fa-clock"></i> ${row.createTime || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-[13px] shadow-sm">
+                                <i class="fa-solid fa-square text-[10px] opacity-70"></i> ${row.taskNo || '-'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="bg-indigo-50/80 text-indigo-700 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide block w-max max-w-[180px] truncate" title="${row.branchName}">${row.branchName || '-'}</span>
+                            <span class="text-slate-500 text-[10px] mt-1 block truncate max-w-[180px]" title="${prov}"><i class="fa-solid fa-location-dot"></i> ${prov}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-[11px] font-bold text-sky-600 mb-0.5 truncate max-w-[250px]" title="${row.catalogSub || ''}">${row.catalogSub || '-'}</div>
+                            <div class="text-[13px] text-slate-700 font-medium truncate max-w-[250px]" title="${row.issue}">${row.issue || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4">${assigneeDisplay}</td>
+                    </tr>
+                `;
+            });
+
+            elTableBody.innerHTML = html;
+            const endCount = Math.min(endIdx, totalItems);
+            pageInfo.textContent = `Showing ${startIdx + 1} to ${endCount} of ${totalItems} entries`;
+            btnPrev.disabled = currentPage === 1;
+            btnNext.disabled = currentPage === totalPages;
+        }
+
+        // ==========================================
+        // POPUP & History Logic
+        // ==========================================
+        function getLiveTime() {
+            const now = new Date();
+            const d = String(now.getDate()).padStart(2,'0');
+            const m = String(now.getMonth() + 1).padStart(2,'0');
+            const y = now.getFullYear() + 543; 
+            const hr = String(now.getHours()).padStart(2,'0');
+            const min = String(now.getMinutes()).padStart(2,'0');
+            const sec = String(now.getSeconds()).padStart(2,'0');
+            return `${d}/${m}/${y} ${hr}:${min}:${sec}`;
+        }
+
+        window.toggleHistoryPanel = function() {
+            const left = document.getElementById('panel-left');
+            const mid = document.getElementById('panel-middle');
+            const right = document.getElementById('panel-right');
+            const btn = document.getElementById('btn-toggle-history');
+            const popup = document.querySelector('.swal2-popup');
+            
+            if (mid.classList.contains('hidden')) {
+                mid.classList.remove('hidden');
+                left.className = "lg:col-span-4 bg-white border-r border-slate-200 overflow-y-auto custom-scrollbar p-6 pb-20 transition-all duration-300";
+                right.className = "lg:col-span-5 bg-white p-6 overflow-y-auto custom-scrollbar pb-32 transition-all duration-300";
+                btn.innerHTML = 'ซ่อนประวัติ <i class="fa-solid fa-chevron-left ml-1 text-[10px]"></i>';
+                if(popup) popup.style.width = '95%';
+            } else {
+                mid.classList.add('hidden');
+                left.className = "lg:col-span-5 bg-white border-r border-slate-200 overflow-y-auto custom-scrollbar p-6 pb-20 transition-all duration-300";
+                right.className = "lg:col-span-7 bg-white p-6 overflow-y-auto custom-scrollbar pb-32 transition-all duration-300";
+                btn.innerHTML = 'ดูรายละเอียด <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>';
+                if(popup) popup.style.width = '80%';
+            }
+        };
+
+        window.viewHistoryTask = function(taskNo) {
+            const task = allData.find(t => t.taskNo === taskNo);
+            if (!task) {
+                Swal.fire({
+                    icon: 'info', 
+                    title: 'ข้อมูลประวัติเก่า', 
+                    text: 'งานประวัตินี้ถูกดำเนินการเสร็จสิ้นหรือไม่อยู่ในรายการปัจจุบัน จึงไม่สามารถดูรายละเอียดเต็มได้', 
+                    customClass: {popup: '!font-prompt'}
+                });
+                return;
+            }
+            
+            currentViewingTaskNo = task.taskNo;
+            currentFoundBranch = null; 
+            
+            window.updateLeftPanelLive(task);
+            if (typeof window.populateRightPanel === 'function') {
+                window.populateRightPanel(task);
+            }
+            
+            const branchNameStr = String(task.branchName).trim();
+            const btnFilter = document.getElementById('btn-filter-catalog');
+            let filterCatalog = null;
+            if (btnFilter && btnFilter.classList.contains('filtered')) {
+                filterCatalog = task.catalogSub;
+            }
+            window.renderHistoryItems(branchNameStr, filterCatalog);
+        };
+
+        window.renderHistoryItems = function(branchName, filterCatalog = null) {
+            const branchHistory = branchHistoryCache[branchName] || { count: 0, data: [] };
+            
+            let displayData = [...branchHistory.data].sort((a, b) => {
+                return parseDateTimeStr(b.date) - parseDateTimeStr(a.date);
+            });
+
+            if (filterCatalog) {
+                displayData = displayData.filter(item => item.catalog === filterCatalog);
+            }
+
+            let html = '';
+            if (displayData.length > 0) {
+                displayData.forEach(item => {
+                    html += `
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm relative cursor-pointer hover:bg-indigo-50 transition-colors" onclick="window.viewHistoryTask('${item.taskNo}')">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-indigo-400 rounded-l-xl"></div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <div class="text-[10px] text-slate-400 font-bold"><i class="fa-regular fa-calendar mr-1"></i> ${item.date}</div>
+                                <div class="text-[10px] text-indigo-500 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">${item.taskNo || '-'}</div>
+                            </div>
+                            <div class="text-[12px] font-bold text-indigo-600 mb-1 truncate" title="${item.catalog}">${item.catalog}</div>
+                            <div class="text-[13px] font-bold text-slate-700 mb-1 truncate" title="${item.issue}">${item.issue}</div>
+                            <div class="text-[12px] text-slate-500 line-clamp-2" title="${item.detail}">${item.detail || '-'}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                html = '<div class="text-center text-slate-400 py-4 text-sm">ไม่พบประวัติการแจ้งซ่อมที่ตรงกัน</div>';
+            }
+            
+            const listEl = document.getElementById('history-list');
+            if (listEl) listEl.innerHTML = html;
+        };
+
+        window.filterHistoryByCatalog = function(catalog, btnElement) {
+            const task = allData.find(t => t.taskNo === currentViewingTaskNo);
+            if(!task) return;
+            
+            // เช็คว่ากำลังใช้ชื่อสาขาที่ค้นหามาหรือไม่
+            const branchNameStr = currentFoundBranch ? currentFoundBranch.name : String(task.branchName).trim();
+
+            const isFiltered = btnElement.classList.contains('filtered');
+            if (isFiltered) {
+                btnElement.classList.remove('filtered', 'bg-indigo-50', 'border-indigo-200', 'text-indigo-600');
+                btnElement.classList.add('bg-white', 'border-slate-300', 'text-slate-600');
+                btnElement.innerHTML = `<i class="fa-solid fa-filter text-slate-400"></i> Catalog เดียวกับงานนี้`;
+                renderHistoryItems(branchNameStr, null);
+            } else {
+                btnElement.classList.add('filtered', 'bg-indigo-50', 'border-indigo-200', 'text-indigo-600');
+                btnElement.classList.remove('bg-white', 'border-slate-300', 'text-slate-600');
+                btnElement.innerHTML = `<i class="fa-solid fa-filter text-indigo-500"></i> แสดง Catalog นี้เท่านั้น`;
+                renderHistoryItems(branchNameStr, catalog);
+            }
+        };
+
+        window.populateRightPanel = function(task) {
+            const raw = task.rawData || [];
+            
+            // ตอนเปิดขึ้นมา ให้ใส่ชื่อของคนที่กำลังล็อกอินเสมอ เพื่อจะได้รู้ว่าใครเป็นคนแก้งาน
+            document.getElementById('form-user').value = currentUserInfo; 
+            
+            // เคลียร์ฟิลด์ต่างๆ เพราะใน Low.html เป็นการสร้าง Action ใหม่
+            document.getElementById('form-branch-contact').value = '';    
+            document.getElementById('form-time').value = getLiveTime();   
+            document.getElementById('form-asset-id').value = raw[18] || '';          
+            document.getElementById('form-symptom').value = '';           
+            document.getElementById('form-resolution').value = '';        
+            document.getElementById('form-forward-status').value = '';    
+            document.getElementById('form-remark').value = '';            
+
+            // เคลียร์ Dropdown
+            const tsRepairType = document.getElementById('form-repair-type').tomselect;
+            const tsSubRepair = document.getElementById('form-sub-repair').tomselect;
+            const tsAssetType = document.getElementById('form-asset-type').tomselect;
+            const tsTeamStatus = document.getElementById('form-team-status').tomselect;
+            const tsActionResult = document.getElementById('form-action-result').tomselect;
+            const tsForwardTeam = document.getElementById('form-forward-team').tomselect;
+            
+            if(tsRepairType) tsRepairType.clear(); 
+            if(tsSubRepair) { tsSubRepair.clear(); tsSubRepair.clearOptions(); }
+            if(tsAssetType) tsAssetType.clear(); 
+            if(tsTeamStatus) tsTeamStatus.clear(); 
+            if(tsActionResult) { tsActionResult.clear(); tsActionResult.clearOptions(); tsActionResult.disable(); }
+            if(tsForwardTeam) tsForwardTeam.clear(); 
+            
+            document.getElementById('form-sub-repair-other').classList.add('hidden');
+            document.getElementById('forward-container').classList.add('hidden');
+            document.getElementById('lbl-resolution').innerHTML = 'การแก้ไข / การแก้ไขเบื้องต้น <span class="text-rose-500">*</span>';
+        };
+
+        // --- ฟังก์ชันค้นหาสาขา (สำหรับกรณีข้อมูลเป็น '-') ---
+        window.searchBranchCode = function(taskCatalogSub) {
+            const code = document.getElementById('form-branch-code').value.trim();
+            if (!code) {
+                showToast('กรุณาระบุรหัสสาขา', 'warning');
+                return;
+            }
+            
+            const resultEl = document.getElementById('branch-search-result');
+            resultEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-orange-500"></i> กำลังค้นหาข้อมูลสาขา...';
+            
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.success && res.data) {
+                        resultEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check-circle"></i> พบข้อมูล: ${res.data.name} (${res.data.province})</span>`;
+                        
+                        // อัปเดตข้อมูลฝั่งซ้ายแบบ Live
+                        document.getElementById('live-branch').innerHTML = `${res.data.name} <span class="text-slate-500 font-normal text-xs ml-1">(${res.data.province})</span>`;
+                        document.getElementById('live-phone').innerText = res.data.phone || '-';
+                        
+                        currentFoundBranch = res.data; // เก็บข้อมูลลงตัวแปร Global
+
+                        // โหลดประวัติของสาขาที่เพิ่งค้นหาเจอมาแสดง
+                        const branchNameStr = res.data.name;
+                        const branchHistory = branchHistoryCache[branchNameStr] || { count: 0, data: [] };
+                        
+                        const countEl = document.getElementById('history-count');
+                        if (countEl) countEl.innerText = branchHistory.count;
+                        
+                        const btnToggle = document.getElementById('btn-toggle-history');
+                        if (btnToggle) btnToggle.disabled = (branchHistory.count === 0);
+
+                        // เช็คปุ่ม Filter ประวัติว่ากดค้างไว้ไหม
+                        const btnFilter = document.getElementById('btn-filter-catalog');
+                        let filterCatalog = null;
+                        if (btnFilter && btnFilter.classList.contains('filtered')) {
+                            filterCatalog = taskCatalogSub;
+                        }
+                        
+                        window.renderHistoryItems(branchNameStr, filterCatalog);
+
+                    } else {
+                        resultEl.innerHTML = `<span class="text-rose-500 font-bold"><i class="fa-solid fa-circle-xmark"></i> ${res.message}</span>`;
+                        currentFoundBranch = null; // ค้นหาไม่เจอ รีเซ็ตค่า
+                        
+                        // รีเซ็ตข้อมูลประวัติซ่อมด้วย
+                        document.getElementById('history-count').innerText = "0";
+                        document.getElementById('btn-toggle-history').disabled = true;
+                        window.renderHistoryItems("-", null);
+                    }
+                })
+                .withFailureHandler(err => {
+                    resultEl.innerHTML = `<span class="text-rose-500 font-bold">เกิดข้อผิดพลาด: ${err.message}</span>`;
+                })
+                .getBranchDetailsByCode(code);
+        };
+
+        window.showFullDetails = function(filteredIndex) {
+            const task = filteredData[filteredIndex];
+            if(!task) return;
+            
+            currentViewingTaskNo = task.taskNo;
+            currentFoundBranch = null; // รีเซ็ตทุกครั้งที่เปิด Popup ใหม่
+            const prov = task.province || (task.rawData && task.rawData[14]) || '-';
+            const actionTime = getLiveTime();
+            const assetColS = (task.rawData && task.rawData[18]) ? task.rawData[18] : '';
+
+            // เช็คว่าสาขาเป็น '-' หรือไม่
+            const isBranchMissing = (String(task.branchName).trim() === '-');
+
+            const branchNameStr = String(task.branchName).trim();
+            const branchHistory = branchHistoryCache[branchNameStr] || { count: 0, data: [] };
+            const historyCount = branchHistory.count;
+            const btnDisabledAttr = historyCount === 0 ? 'disabled' : '';
+
+            const repairTypeSet = new Set();
+            const assetTypeSet = new Set();
+            dropdownData.forEach(item => {
+                if(item.repairType) repairTypeSet.add(item.repairType);
+                if(item.typeAsset) assetTypeSet.add(item.typeAsset);
+            });
+            const rtOptions = '<option value="">ค้นหา / เลือก...</option>' + Array.from(repairTypeSet).map(val => `<option value="${val}">${val}</option>`).join('');
+            const atOptions = '<option value="">ค้นหา / เลือก...</option>' + Array.from(assetTypeSet).map(val => `<option value="${val}">${val}</option>`).join('');
+
+            // ส่วนของช่องป้อนรหัสสาขา (จะแสดงเฉพาะเมื่อ isBranchMissing = true)
+            const branchSearchHtml = isBranchMissing ? `
+                <div id="branch-code-container" class="col-span-1 md:col-span-2 mb-4 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                    <label class="block text-[12px] font-bold text-orange-700 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> กรุณาระบุรหัสสาขา (เนื่องจากระบบไม่พบข้อมูลสาขา) <span class="text-rose-500">*</span></label>
+                    <div class="flex gap-2">
+                        <input type="text" id="form-branch-code" placeholder="ป้อนรหัสสาขา 4 หลัก..." class="w-full bg-white border border-orange-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors">
+                        <button type="button" id="btn-search-branch" onclick="window.searchBranchCode('${task.catalogSub}')" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap">ค้นหา</button>
+                    </div>
+                    <div id="branch-search-result" class="text-xs mt-2 text-slate-500"></div>
+                </div>
+            ` : '';
+
+            const popupHtml = `
+                <div class="relative w-full h-full text-left bg-slate-50 font-prompt">
+                    
+                    <div id="confirm-overlay" class="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+                        <div class="bg-white rounded-2xl shadow-2xl p-6 w-[50vw] max-w-[800px] min-w-[400px] transform scale-95 opacity-0 transition-all duration-200" id="confirm-box">
+                            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-3"><i class="fa-solid fa-circle-question text-indigo-500 mr-2"></i> ยืนยันการบันทึกข้อมูล</h3>
+                            <div id="confirm-details" class="space-y-2 text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6"></div>
+                            <div class="flex gap-3">
+                                <button id="btn-confirm-cancel" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">ยกเลิก</button>
+                                <button id="btn-confirm-save" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md">ยืนยันบันทึก</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="progress-overlay" class="absolute inset-0 z-[110] bg-white hidden flex-col items-center justify-center">
+                        <div class="font-prompt text-center w-full max-w-md px-6">
+                            <h3 class="text-2xl font-bold text-slate-800 mb-2">กำลังบันทึกข้อมูล...</h3>
+                            <p class="text-sm text-slate-400 mb-6">กรุณารอสักครู่ ห้ามปิดหน้าต่างนี้</p>
+                            <div class="w-full bg-slate-100 rounded-full h-4 mb-3 overflow-hidden border border-slate-200 relative">
+                                <div id="upload-progress-bar" class="bg-indigo-500 h-full rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                            </div>
+                            <div id="upload-percent" class="text-lg font-bold text-indigo-600">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Layout แบบ 3 ฝั่ง -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 h-full min-h-[600px] max-h-[85vh] overflow-hidden transition-all duration-300" id="popup-main-grid">
+                        
+                        <!-- ฝั่งซ้าย: รายละเอียดงาน -->
+                        <div id="panel-left" class="lg:col-span-5 bg-white border-r border-slate-200 overflow-y-auto custom-scrollbar p-6 pb-20 transition-all duration-300">
+                            
+                            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-5 flex justify-between items-center shadow-sm">
+                                <div>
+                                    <div class="text-[11px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">ประวัติซ่อมสาขานี้</div>
+                                    <div class="text-[16px] font-bold text-slate-800"><span id="history-count">${historyCount}</span> รายการ</div>
+                                </div>
+                                <button id="btn-toggle-history" onclick="window.toggleHistoryPanel()" ${btnDisabledAttr} class="bg-white border border-indigo-200 text-indigo-600 text-xs px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                                    ดูรายละเอียด <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+                                <i class="fa-solid fa-file-lines text-indigo-600 text-2xl"></i>
+                                <div>
+                                    <h2 class="text-[18px] font-bold text-slate-800 tracking-wide leading-tight">รายละเอียดงาน</h2>
+                                    <p class="text-[12px] text-slate-400" id="live-task-no">${task.taskNo || '-'}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3 mb-5">
+                                <div class="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-wider">Priority</div>
+                                    <div class="text-[14px] font-bold ${task.highLow === 'HIGH' ? 'text-rose-600' : 'text-emerald-600'}" id="live-highlow">${task.highLow || '-'}</div>
+                                </div>
+                                <div class="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-wider">Date Created</div>
+                                    <div class="text-[13px] font-semibold text-slate-700" id="live-created">${task.reportDate || '-'} <span class="text-[11px] font-normal text-slate-500">${task.createTime || ''}</span></div>
+                                </div>
+                            </div>
+
+                            <div class="mb-5 space-y-4">
+                                <div>
+                                    <span class="text-[11px] text-slate-400 font-bold uppercase block mb-1">สาขา / Branch</span>
+                                    <div class="font-bold text-indigo-700 text-[14px] break-words" id="live-branch">${task.branchName || '-'} <span class="text-slate-500 font-normal text-xs ml-1">(${prov})</span></div>
+                                    <div class="text-slate-500 text-[12px] mt-0.5"><i class="fa-solid fa-phone mr-1"></i> <span id="live-phone">${task.phone || '-'}</span></div>
+                                </div>
+                                <div>
+                                    <span class="text-[11px] text-slate-400 font-bold uppercase block mb-1">Catalog & Issue</span>
+                                    <div class="font-bold text-sky-600 text-[13px] mb-0.5" id="live-catalog">${task.catalogSub || '-'}</div>
+                                    <div class="font-semibold text-rose-600 text-[14px]" id="live-issue">${task.issue || '-'}</div>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span class="text-[11px] text-slate-400 font-bold uppercase block mb-1">รายละเอียด / Detail</span>
+                                    <div class="text-slate-700 text-[13px] leading-relaxed whitespace-pre-wrap" id="live-detail">${task.detail || '-'}</div>
+                                </div>
+                                <div>
+                                    <span class="text-[11px] text-slate-400 font-bold uppercase block mb-1">กำหนดวันแล้วเสร็จ</span>
+                                    <div class="font-bold text-slate-700 text-[13px]" id="live-due">${task.dueDate || '-'} <span class="text-slate-500 font-normal ml-1">${task.dueTime || ''}</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ฝั่งกลาง: สไลด์ข้อมูลประวัติ -->
+                        <div id="panel-middle" class="hidden lg:col-span-3 bg-slate-50 border-r border-slate-200 p-5 overflow-y-auto custom-scrollbar pb-20 transition-all duration-300">
+                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-200">
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-[15px] mb-2"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> ประวัติแจ้งซ่อม</h3>
+                                    <button id="btn-filter-catalog" onclick="window.filterHistoryByCatalog('${task.catalogSub}', this)" class="bg-white border border-slate-300 text-slate-600 text-[11px] px-2.5 py-1.5 rounded-md hover:bg-slate-100 transition-colors shadow-sm font-medium flex items-center gap-1.5 disabled:opacity-50" ${btnDisabledAttr}>
+                                        <i class="fa-solid fa-filter text-slate-400"></i> Catalog เดียวกับงานนี้
+                                    </button>
+                                </div>
+                                <button onclick="window.toggleHistoryPanel()" class="text-slate-400 hover:text-indigo-500 transition-colors mt-1">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
+                            <div id="history-list" class="space-y-3"></div>
+                        </div>
+
+                        <!-- ฝั่งขวา: ฟอร์มทีมทำงาน -->
+                        <div id="panel-right" class="lg:col-span-7 bg-white p-6 overflow-y-auto custom-scrollbar pb-32 transition-all duration-300">
+                            <div class="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100 justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-users-gear text-indigo-600 text-xl"></i>
+                                    <h2 class="text-[18px] font-bold text-slate-800 tracking-wide">ฟอร์มทีมทำงานและส่งต่องาน</h2>
+                                </div>
+                                <button onclick="window.Swal.close()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <i class="fa-solid fa-xmark text-xl"></i>
+                                </button>
+                            </div>
+
+                            <!-- แทรกกล่องค้นหารหัสสาขาตรงนี้ (จะโชว์เฉพาะถ้าข้อมูลเป็น '-') -->
+                            ${branchSearchHtml}
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">ผู้รับงาน <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="form-user" value="${currentUserInfo}" readonly class="w-full bg-slate-100 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 cursor-not-allowed">
+                                </div>
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">ผู้รับเรื่องสาขา <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="form-branch-contact" placeholder="ระบุชื่อผู้แจ้ง..." class="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">ประเภทงานซ่อม <span class="text-rose-500">*</span></label>
+                                    <select id="form-repair-type" class="w-full text-sm" placeholder="ค้นหา / เลือก...">${rtOptions}</select>
+                                </div>
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">ประเภทงานย่อย <span class="text-rose-500">*</span></label>
+                                    <select id="form-sub-repair" class="w-full text-sm" placeholder="เลือกประเภทงานซ่อมก่อน..."></select>
+                                    <input type="text" id="form-sub-repair-other" placeholder="โปรดระบุประเภทงานย่อย (อื่นๆ)..." class="hidden mt-2 w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">Type Asset</label>
+                                    <select id="form-asset-type" class="w-full text-sm" placeholder="ค้นหา / เลือก...">${atOptions}</select>
+                                </div>
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-500 mb-1">เวลาดำเนินการ (Auto)</label>
+                                    <div class="relative">
+                                        <input type="text" id="form-time" value="${actionTime}" readonly class="w-full bg-slate-100 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 font-mono text-center cursor-not-allowed">
+                                        <i class="fa-regular fa-clock absolute right-3 top-2.5 text-slate-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-[12px] font-bold text-slate-500 mb-1">Asset (อุปกรณ์)</label>
+                                <input type="text" id="form-asset-id" value="${assetColS}" placeholder="ระบุ Asset..." class="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-[12px] font-bold text-slate-500 mb-1">อาการ <span class="text-rose-500">*</span></label>
+                                <textarea id="form-symptom" rows="2" placeholder="ระบุอาการที่พบ..." class="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors resize-none"></textarea>
+                            </div>
+
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-[12px] font-bold text-slate-500 mb-1">สถานะทีม <span class="text-rose-500">*</span></label>
+                                        <select id="form-team-status" class="w-full text-sm" placeholder="เลือกสถานะทีม...">
+                                            <option value="">เลือกสถานะ...</option>
+                                            <option value="ทีมรีโมทจบงาน-ได้">ทีมรีโมทจบงาน-ได้</option>
+                                            <option value="ทีมรีโมทจบงาน-ไม่ได้">ทีมรีโมทจบงาน-ไม่ได้</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label id="lbl-action-result" class="block text-[12px] font-bold text-slate-500 mb-1">ผลการดำเนินการ <span class="text-rose-500">*</span></label>
+                                        <select id="form-action-result" disabled class="w-full text-sm" placeholder="รอเลือกสถานะทีม..."></select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label id="lbl-resolution" class="block text-[12px] font-bold text-slate-500 mb-1">การแก้ไข / การแก้ไขเบื้องต้น <span class="text-rose-500">*</span></label>
+                                    <textarea id="form-resolution" rows="2" placeholder="ระบุรายละเอียด..." class="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors resize-none"></textarea>
+                                </div>
+
+                                <div id="forward-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden border-t border-slate-200 pt-4 mt-2">
+                                    <div>
+                                        <label class="block text-[12px] font-bold text-rose-500 mb-1">เลือกทีมที่ส่งต่อ <span class="text-rose-500">*</span></label>
+                                        <select id="form-forward-team" class="w-full text-sm" placeholder="เลือกทีมที่ต้องการส่งต่อ...">
+                                            <option value="">เลือกทีม...</option>
+                                            <option value="IT Service">IT Service</option>
+                                            <option value="Team Infra">Team Infra</option>
+                                            <option value="Team Support">Team Support</option>
+                                            <option value="Team Set Up">Team Set Up</option>
+                                            <option value="Team PCM">Team PCM</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[12px] font-bold text-slate-500 mb-1">สถานะส่งต่องาน (Auto)</label>
+                                        <input type="text" id="form-forward-status" readonly placeholder="ออโต้จากประเภทงานย่อย..." class="w-full bg-slate-100 border border-slate-200 text-slate-600 font-medium text-sm rounded-lg px-3 py-2 cursor-not-allowed">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-[12px] font-bold text-slate-500 mb-1">หมายเหตุ (ถ้ามี)</label>
+                                <input type="text" id="form-remark" placeholder="ข้อความเพิ่มเติม..." class="w-full bg-white border border-slate-300 focus:border-indigo-500 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none transition-colors">
+                            </div>
+
+                            <div class="flex gap-3 pt-4 border-t border-slate-100">
+                                <button onclick="window.handleSaveTaskAction('${task.taskNo}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-[0.98]">
+                                    <i class="fa-solid fa-floppy-disk mr-2"></i> บันทึกข้อมูล
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                html: popupHtml,
+                showConfirmButton: false,
+                width: '80%', 
+                padding: 0,
+                customClass: { popup: '!rounded-2xl overflow-hidden shadow-2xl' },
+                didOpen: () => {
+                    window.initFormLogic();
+                    clockInterval = setInterval(() => {
+                        const el = document.getElementById('form-time');
+                        if (el) el.value = getLiveTime();
+                    }, 1000);
+                    
+                    window.renderHistoryItems(branchNameStr, null);
+                },
+                willClose: () => {
+                    currentViewingTaskNo = null;
+                    currentFoundBranch = null; // รีเซ็ตการค้นหาเมื่อปิด Popup
+                    if (clockInterval) clearInterval(clockInterval);
+                }
+            });
+        };
+
+        window.updateLeftPanelLive = function(task) {
+            if(!task) return;
+            // ถ้ากำลังแสดงข้อมูลที่ค้นหาเจอใหม่ ให้ข้ามการอัปเดตแบบ Live บางส่วน
+            if(currentFoundBranch) return; 
+
+            const setHtml = (id, val) => { const el = document.getElementById(id); if(el) el.innerHTML = val; };
+            
+            setHtml('live-highlow', task.highLow || '-');
+            const hL = document.getElementById('live-highlow');
+            if (hL) hL.className = `text-[14px] font-bold ${task.highLow === 'HIGH' ? 'text-rose-600' : 'text-emerald-600'}`;
+
+            setHtml('live-created', `${task.reportDate || '-'} <span class="text-[11px] font-normal text-slate-500">${task.createTime || ''}</span>`);
+            const prov = task.province || (task.rawData && task.rawData[14]) || '-';
+            setHtml('live-branch', `${task.branchName || '-'} <span class="text-slate-500 font-normal text-xs ml-1">(${prov})</span>`);
+            setHtml('live-phone', task.phone || '-');
+            setHtml('live-catalog', task.catalogSub || '-');
+            setHtml('live-issue', task.issue || '-');
+            setHtml('live-detail', task.detail || '-');
+            setHtml('live-due', `${task.dueDate || '-'} <span class="text-slate-500 font-normal ml-1">${task.dueTime || ''}</span>`);
+        };
+
+        window.initFormLogic = function() {
+            const tsConfig = { create: false, sortField: { field: "text", direction: "asc" } };
+            
+            const tsRepairType = new TomSelect("#form-repair-type", tsConfig);
+            const tsSubRepair = new TomSelect("#form-sub-repair", tsConfig);
+            const tsAssetType = new TomSelect("#form-asset-type", tsConfig);
+            const tsTeamStatus = new TomSelect("#form-team-status", tsConfig);
+            const tsActionResult = new TomSelect("#form-action-result", tsConfig);
+            const tsForwardTeam = new TomSelect("#form-forward-team", tsConfig);
+
+            const fwdStatus = document.getElementById('form-forward-status');
+            const lblResolution = document.getElementById('lbl-resolution');
+            const fwdContainer = document.getElementById('forward-container');
+
+            tsRepairType.on('change', (val) => {
+                tsSubRepair.clear();
+                tsSubRepair.clearOptions();
+                fwdStatus.value = '';
+                document.getElementById('form-sub-repair-other').classList.add('hidden');
+                document.getElementById('form-sub-repair-other').value = '';
+
+                if (val) {
+                    const subs = new Set();
+                    dropdownData.filter(d => d.repairType === val).forEach(d => {
+                        if (d.subRepairType) subs.add(d.subRepairType);
+                    });
+                    Array.from(subs).forEach(s => tsSubRepair.addOption({value: s, text: s}));
+                    tsSubRepair.addOption({value: 'อื่นๆ', text: 'อื่นๆ'});
+                }
+            });
+
+            tsSubRepair.on('change', (srtVal) => {
+                const rtVal = tsRepairType.getValue();
+                const otherInput = document.getElementById('form-sub-repair-other');
+                
+                if (srtVal === 'อื่นๆ') {
+                    otherInput.classList.remove('hidden');
+                    fwdStatus.value = '';
+                } else {
+                    otherInput.classList.add('hidden');
+                    otherInput.value = '';
+                    const match = dropdownData.find(d => d.repairType === rtVal && d.subRepairType === srtVal);
+                    fwdStatus.value = (match && match.forwardStatus) ? match.forwardStatus : '';
+                }
+            });
+
+            tsTeamStatus.on('change', (val) => {
+                tsActionResult.enable();
+                tsActionResult.clear();
+                tsActionResult.clearOptions();
+                tsForwardTeam.clear();
+
+                if (val === 'ทีมรีโมทจบงาน-ได้') {
+                    lblResolution.innerHTML = 'การแก้ไข <span class="text-rose-500">*</span>';
+                    tsActionResult.addOption({value: 'ยกเลิกงาน', text: 'ยกเลิกงาน'});
+                    tsActionResult.addOption({value: 'แก้ไขเรียบร้อย', text: 'แก้ไขเรียบร้อย'});
+                    fwdContainer.classList.add('hidden');
+                } else if (val === 'ทีมรีโมทจบงาน-ไม่ได้') {
+                    lblResolution.innerHTML = 'การแก้ไขเบื้องต้น <span class="text-rose-500">*</span>';
+                    tsActionResult.addOption({value: 'ส่งต่อ', text: 'ส่งต่อ'});
+                    tsActionResult.setValue('ส่งต่อ');
+                    fwdContainer.classList.remove('hidden');
+                } else {
+                    tsActionResult.disable();
+                    fwdContainer.classList.add('hidden');
+                }
+            });
+        };
+
+        window.handleSaveTaskAction = function(taskNo) {
+            let finalSubRepair = document.getElementById('form-sub-repair').tomselect.getValue();
+            const subRepairOther = document.getElementById('form-sub-repair-other').value.trim();
+            if (finalSubRepair === 'อื่นๆ' && subRepairOther) {
+                finalSubRepair = 'อื่นๆ - ' + subRepairOther;
+            }
+
+            const task = allData.find(t => t.taskNo === taskNo);
+            
+            // เช็คว่าเดิมทีต้องบังคับกรอกรหัสสาขาไหม
+            const needsBranchCode = (String(task.branchName).trim() === '-');
+            let finalBranchName = task?.branchName || '';
+            let finalProvince = task?.province || (task?.rawData && task.rawData[14]) || '';
+            let finalPhone = task?.phone || '';
+
+            // ถ้าต้องบังคับกรอก แล้วค้นหาเจอ ให้ใช้ข้อมูลที่ค้นหาเจอแทน
+            if (needsBranchCode) {
+                if (!currentFoundBranch) {
+                    showToast('กรุณาป้อนรหัสสาขาและกดค้นหาให้พบข้อมูลก่อนบันทึก', 'warning');
+                    return;
+                }
+                finalBranchName = currentFoundBranch.name;
+                finalProvince = currentFoundBranch.province;
+                finalPhone = currentFoundBranch.phone;
+            }
+
+            const payload = {
+                highLow: task?.highLow || '',
+                createBy: task?.createBy || '',
+                
+                // ใช้ข้อมูลสาขาที่อัปเดตแล้ว (ถ้ามี)
+                branchName: finalBranchName,
+                province: finalProvince,
+                phone: finalPhone,
+                
+                catalogSub: task?.catalogSub || '',
+                detail: task?.detail || '',
+                issue: task?.issue || '',
+                reportDate: task?.reportDate || '',
+                createTime: task?.createTime || '',
+                dueDate: task?.dueDate || '',
+                dueTime: task?.dueTime || '',
+                openDate: task?.openDate || '',
+
+                taskNo: taskNo,
+                user: document.getElementById('form-user').value,
+                branchContact: document.getElementById('form-branch-contact').value.trim(),
+                actionTime: document.getElementById('form-time').value,
+                repairType: document.getElementById('form-repair-type').tomselect.getValue(),
+                subRepairType: finalSubRepair,
+                assetType: document.getElementById('form-asset-type').tomselect.getValue(),
+                assetId: document.getElementById('form-asset-id').value.trim(), 
+                symptom: document.getElementById('form-symptom').value,
+                teamStatus: document.getElementById('form-team-status').tomselect.getValue(),
+                actionResult: document.getElementById('form-action-result').tomselect.getValue(),
+                resolution: document.getElementById('form-resolution').value,
+                forwardTeam: document.getElementById('form-forward-team').tomselect.getValue(),
+                forwardStatus: document.getElementById('form-forward-status').value,
+                remark: document.getElementById('form-remark').value,
+                rawData: task?.rawData 
+            };
+
+            if (!payload.branchContact) {
+                showToast('กรุณาระบุ ผู้รับเรื่องสาขา', 'warning'); return;
+            }
+            if (!payload.repairType || !payload.subRepairType || !payload.symptom || !payload.teamStatus || !payload.resolution) {
+                showToast('กรุณากรอกข้อมูลในช่องที่มีเครื่องหมายดอกจัน (*) ให้ครบ', 'warning'); return;
+            }
+            if (document.getElementById('form-sub-repair').tomselect.getValue() === 'อื่นๆ' && !subRepairOther) {
+                showToast('กรุณาระบุรายละเอียด ประเภทงานย่อย (อื่นๆ)', 'warning'); return;
+            }
+            if (payload.teamStatus === 'ทีมรีโมทจบงาน-ไม่ได้' && !payload.forwardTeam) {
+                showToast('กรุณาเลือกทีมที่ต้องการส่งต่องาน', 'warning'); return;
+            }
+            if (payload.teamStatus === 'ทีมรีโมทจบงาน-ได้' && !payload.actionResult) {
+                showToast('กรุณาเลือก ยกเลิกงาน หรือ แก้ไขเรียบร้อย', 'warning'); return;
+            }
+
+            const confirmDetails = document.getElementById('confirm-details');
+            confirmDetails.innerHTML = `
+                <div class="flex justify-between py-1 border-b border-slate-100"><span class="font-bold">Task No:</span> <span class="text-indigo-600 font-bold">${payload.taskNo}</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-100"><span class="font-bold">ประเภทงาน:</span> <span>${payload.repairType}</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-100"><span class="font-bold">สถานะทีม:</span> <span class="${payload.teamStatus.includes('ได้') && !payload.teamStatus.includes('ไม่ได้') ? 'text-emerald-600' : 'text-rose-500'} font-bold">${payload.teamStatus}</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-100"><span class="font-bold">ผลดำเนินการ:</span> <span>${payload.actionResult}</span></div>
+                ${payload.forwardTeam ? `<div class="flex justify-between py-1 border-b border-slate-100"><span class="font-bold">ส่งต่อไปยัง:</span> <span class="text-rose-500 font-bold">${payload.forwardTeam}</span></div>` : ''}
+            `;
+
+            const overlay = document.getElementById('confirm-overlay');
+            const box = document.getElementById('confirm-box');
+            overlay.classList.remove('hidden');
+            setTimeout(() => { box.classList.remove('scale-95', 'opacity-0'); }, 10);
+
+            document.getElementById('btn-confirm-cancel').onclick = () => {
+                box.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { overlay.classList.add('hidden'); }, 200);
+            };
+
+            document.getElementById('btn-confirm-save').onclick = () => {
+                box.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { overlay.classList.add('hidden'); window.executeUploadAction(payload); }, 200);
+            };
+        };
+
+        window.executeUploadAction = function(payload) {
+            const progressOverlay = document.getElementById('progress-overlay');
+            progressOverlay.classList.remove('hidden'); progressOverlay.classList.add('flex');
+            
+            const bar = document.getElementById('upload-progress-bar');
+            const pct = document.getElementById('upload-percent');
+            let progress = 0;
+            
+            const timer = setInterval(() => {
+                progress += 15;
+                if (progress >= 95) progress = 95;
+                if (bar) bar.style.width = progress + '%';
+                if (pct) pct.innerText = progress + '%';
+            }, 100);
+
+            google.script.run
+                .withSuccessHandler((res) => {
+                    clearInterval(timer);
+                    if (bar) bar.style.width = '100%';
+                    if (pct) pct.innerText = '100%';
+                    
+                    setTimeout(() => {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success', title: 'บันทึกสำเร็จ!', html: res.message, confirmButtonText: 'ตกลง',
+                                customClass: { popup: '!rounded-2xl font-prompt', confirmButton: 'bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-lg' }
+                            }).then(() => fetchDataSilent());
+                        } else {
+                            progressOverlay.classList.add('hidden'); progressOverlay.classList.remove('flex');
+                            Swal.fire('ข้อผิดพลาด', res.message, 'error');
+                        }
+                    }, 200); 
+                })
+                .withFailureHandler((err) => {
+                    clearInterval(timer);
+                    progressOverlay.classList.add('hidden'); progressOverlay.classList.remove('flex');
+                    Swal.fire('ข้อผิดพลาดระบบ', err.message, 'error');
+                })
+                .saveTeamAction(payload);
+        };
+
+        btnPrev.addEventListener('click', () => { if(currentPage > 1) { currentPage--; renderTable(); }});
+        btnNext.addEventListener('click', () => { currentPage++; renderTable(); });
+
+        elFilterSearch.addEventListener('input', () => applyFilters());
+
+        btnMyTasks.addEventListener('click', () => {
+            isMyTasksOnly = !isMyTasksOnly;
+            if(isMyTasksOnly) {
+                btnMyTasks.classList.add('active');
+                tsFilterEmp.clear(true);
+                tsFilterEmp.disable();
+            } else {
+                btnMyTasks.classList.remove('active');
+                tsFilterEmp.enable();
+            }
+            applyFilters();
+        });
+
+        window.setDateMode = function(mode) {
+            dateMode = mode;
+            [btnDateAll, btnDateDay, btnDateRange].forEach(btn => btn.classList.remove('active'));
+            datePickerContainer.classList.add('hidden');
+            singleDateWrap.classList.add('hidden');
+            rangeDateWrap.classList.add('hidden');
+
+            if(mode === 'all') {
+                btnDateAll.classList.add('active');
+            } else {
+                datePickerContainer.classList.remove('hidden');
+                datePickerContainer.classList.add('flex');
+                if (mode === 'day') {
+                    btnDateDay.classList.add('active');
+                    singleDateWrap.classList.remove('hidden');
+                } else if (mode === 'range') {
+                    btnDateRange.classList.add('active');
+                    rangeDateWrap.classList.remove('hidden');
+                }
+            }
+            applyFilters();
+        };
+
+        btnDateAll.addEventListener('click', () => window.setDateMode('all'));
+        btnDateDay.addEventListener('click', () => window.setDateMode('day'));
+        btnDateRange.addEventListener('click', () => window.setDateMode('range'));
+
+        inputDateSingle.addEventListener('change', () => applyFilters());
+        inputDateStart.addEventListener('change', () => applyFilters());
+        inputDateEnd.addEventListener('change', () => applyFilters());
+
+    </script>
+</body>
+</html>

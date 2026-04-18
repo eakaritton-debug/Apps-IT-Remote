@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>วางงาน F1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- SheetJS (xlsx) for reading Excel client-side -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; }
+        .drag-active { background-color: #e0e7ff; border-color: #6366f1; }
+        .table-container { max-height: 60vh; overflow-y: auto; }
+        th { position: sticky; top: 0; background-color: #f9fafb; z-index: 10; }
+        .swal2-popup { font-family: 'Prompt', sans-serif !important; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="w-full mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 border-l-4 border-indigo-500 relative overflow-hidden">
+            <!-- Background Graphic -->
+            <div class="absolute -right-10 -top-10 text-indigo-50 opacity-50 pointer-events-none">
+                <i class="fa-solid fa-file-excel text-[150px]"></i>
+            </div>
+            
+            <div class="w-full relative z-10">
+                <div class="flex justify-between items-start w-full flex-wrap gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                            <i class="fa-solid fa-file-excel text-green-600"></i> นำเข้าข้อมูลงาน F1 (Excel)
+                        </h2>
+                        <p class="text-gray-500 mt-2 text-sm">
+                            อัปโหลดไฟล์ Excel เพื่อบันทึกงานไอทีทั้งหมดลงฐานข้อมูล <br>
+                            <span class="text-indigo-500 font-medium"><i class="fa-solid fa-shield-halved"></i> ติ๊กเลือกรายชื่อคนด้านล่างเพื่อจ่ายงานให้ผู้ที่กำลังเข้ากะ (ระบบสุ่มการจ่ายงาน โดยจ่ายงานไม่ซ้ำกัน) <span class="text-red-500 underline">*จำเป็นต้องเลือกผู้รับงานอย่างน้อย 1 คน</span></span>
+                        </p>
+                    </div>
+                    <button onclick="refreshData()" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> รีเฟรชข้อมูล
+                    </button>
+                </div>
+
+                <!-- Active Checked-in Seniors Box -->
+                <div class="mt-5 p-4 bg-blue-50 rounded-xl border border-blue-100 shadow-inner">
+                    <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-blue-600"></i> เลือกรายชื่อผู้ Check-In ที่ต้องการจ่ายงานให้ (เฉพาะผู้ที่กำลังเข้ากะ)
+                        <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 animate-pulse"><i class="fa-solid fa-rotate w-3"></i> อัปเดตอัตโนมัติ</span>
+                    </h3>
+                    <div id="active-seniors-container" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scroll">
+                        <span class="text-sm text-blue-500 flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RED WARNING (ซ่อนเป็นค่าเริ่มต้น จะแสดงเมื่อคนวางงานไม่ได้ Check In) -->
+        <div id="checkin-warning" class="hidden mb-6 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-xl shadow-sm animate-pulse">
+            <div class="flex items-start gap-4">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-3xl mt-1"></i>
+                <div>
+                    <h3 class="text-red-800 font-bold text-xl">แจ้งเตือน! คุณยังไม่ได้ลงเวลาเข้างาน (Check In)</h3>
+                    <p class="text-red-600 text-sm mt-1">ระบบบังคับให้ผู้ปฏิบัติงานต้อง <span class="font-bold underline">Check In เข้ากะ</span> ก่อน จึงจะสามารถอัปโหลดข้อมูลและจ่ายงานได้</p>
+                    <button onclick="Swal.fire('กรุณาเปลี่ยนเมนู', 'โปรดไปที่เมนู <b>ลงเวลา Senior</b> ทางด้านซ้ายมือเพื่อทำการ Check In ก่อนครับ', 'info')" class="mt-3 bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                        <i class="fa-solid fa-hand-pointer"></i> รับทราบ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+            <!-- Left Side: Upload & Preview -->
+            <div class="lg:col-span-2 xl:col-span-3 space-y-6">
+                <!-- Upload Area (ซ่อนถ้ายังไม่ Checkin) -->
+                <div id="upload-wrapper" class="bg-white rounded-2xl shadow-sm p-6">
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center transition-colors hover:bg-gray-50 cursor-pointer group">
+                        <div class="mx-auto w-16 h-16 bg-green-100 group-hover:bg-green-200 transition-colors rounded-full flex items-center justify-center mb-4 text-green-600">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl group-hover:scale-110 transition-transform"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-700">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</h3>
+                        <p class="text-gray-500 mt-1 text-sm">รองรับเฉพาะไฟล์ Excel (.xlsx, .xls)</p>
+                        
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
+                    </div>
+
+                    <!-- File Info -->
+                    <div id="file-info" class="hidden mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <i class="fa-solid fa-file-excel text-green-600 text-2xl flex-shrink-0"></i>
+                            <div class="overflow-hidden">
+                                <p id="file-name" class="font-semibold text-gray-800 truncate">filename.xlsx</p>
+                                <p id="row-count" class="text-sm text-gray-600">พบข้อมูล "งานไอที": 0 แถว</p>
+                            </div>
+                        </div>
+                        <button id="btn-remove" class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors flex-shrink-0" title="ลบไฟล์">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Table -->
+                <div id="preview-section" class="hidden bg-white rounded-2xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-gray-400"></i> ตัวอย่างข้อมูลงานไอที <span class="text-sm font-normal text-gray-500">(แสดงสูงสุด 5 แถวแรก)</span>
+                    </h3>
+                    <div class="table-container border border-gray-200 rounded-lg">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead id="preview-head" class="text-xs text-gray-700 uppercase bg-gray-50">
+                            </thead>
+                            <tbody id="preview-body" class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="mt-6 flex justify-end">
+                        <button id="btn-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-xl shadow-sm transition-all hover:shadow-md flex items-center gap-2 w-full md:w-auto justify-center text-lg">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> ยืนยันและดำเนินการวางงาน
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: History Section -->
+            <div class="lg:col-span-1 xl:col-span-1">
+                <div class="bg-white rounded-2xl shadow-sm p-6 h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> ประวัติ
+                        </h3>
+                        <!-- ตัวกรองวันที่ -->
+                        <input type="date" id="history-date-filter" class="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-600 cursor-pointer">
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto min-h-[300px] xl:min-h-[500px] custom-scroll pr-1">
+                        <ul id="history-list" class="divide-y divide-gray-100">
+                            <li class="py-8 text-center text-gray-500">
+                                <i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังโหลดข้อมูล...
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="mt-4 pt-4 border-t flex flex-col items-center gap-2">
+                        <p id="history-info" class="text-xs text-gray-500">แสดงรายการ ...</p>
+                        <div class="flex items-center gap-2 w-full justify-between">
+                            <button id="btn-prev" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors" disabled>
+                                <i class="fa-solid fa-chevron-left"></i> ก่อน
+                            </button>
+                            <span id="page-indicator" class="text-sm font-medium text-gray-700">1 / 1</span>
+                            <button id="btn-next" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors" disabled>
+                                ถัดไป <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ป้องกัน Error "google is not defined" สำหรับการทดสอบ Local ---
+        if (typeof google === 'undefined') {
+            window.google = {
+                script: {
+                    run: {
+                        withSuccessHandler: function(fn) { this._success = fn; return this; },
+                        withFailureHandler: function(fn) { this._failure = fn; return this; },
+                        getImportF1History: function() { setTimeout(() => { if (this._success) this._success({success:true, data:[], totalPages:1, currentPage:1, totalItems:0}); }, 500); },
+                        processImportF1Data: function() { setTimeout(() => { if (this._failure) this._failure(new Error("Local Test")); }, 500); },
+                        getCurrentUserInfo: function() { setTimeout(() => { if (this._success) this._success("ADMIN - Local Testing"); }, 200); },
+                        getActiveSeniors: function() { setTimeout(() => { if(this._success) this._success({success: true, isUserCheckedIn: true, data: [{name: "สมชาย ใจดี", dateIn:"24/10/2023", timeIn: "08:00"}, {name: "มานี มีงาน", dateIn:"24/10/2023", timeIn: "08:15"}]}); }, 500); }
+                    }
+                }
+            };
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const fileNameEl = document.getElementById('file-name');
+        const rowCountEl = document.getElementById('row-count');
+        const btnRemove = document.getElementById('btn-remove');
+        const previewSection = document.getElementById('preview-section');
+        const previewHead = document.getElementById('preview-head');
+        const previewBody = document.getElementById('preview-body');
+        const btnSubmit = document.getElementById('btn-submit');
+        
+        const historyList = document.getElementById('history-list');
+        const historyInfo = document.getElementById('history-info');
+        const pageIndicator = document.getElementById('page-indicator');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const historyDateFilter = document.getElementById('history-date-filter');
+
+        const uploadWrapper = document.getElementById('upload-wrapper');
+        const checkinWarning = document.getElementById('checkin-warning');
+
+        let currentExcelData = null;
+        let currentFileName = "";
+        
+        // --- ตัวแปรสำหรับระบบ Client-side Pagination (โหลด 0 วินาที) ---
+        let currentHistoryPage = 1;
+        const historyLimit = 6;
+        let cachedHistoryData = []; // เก็บประวัติทั้งหมดของเงื่อนไขที่เลือกไว้ในเครื่อง
+        let totalHistoryItems = 0;
+        let isFetchingHistory = false; // ป้องกันการดึงข้อมูลซ้ำซ้อน
+
+        let currentUserInfo = "กำลังโหลดข้อมูลผู้ใช้...";
+        let isUserCheckedIn = false; 
+
+        // ระบบจดจำคนที่ถูกติ๊กออก (เพื่อไม่ให้มันติ๊กกลับเวลารีเฟรช)
+        let uncheckedWorkers = new Set();
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.classList.contains('worker-checkbox')) {
+                if (e.target.checked) uncheckedWorkers.delete(e.target.value);
+                else uncheckedWorkers.add(e.target.value);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshData();
+            google.script.run
+                .withSuccessHandler((info) => { currentUserInfo = info; })
+                .withFailureHandler(() => { currentUserInfo = "ไม่ระบุผู้ใช้งาน"; })
+                .getCurrentUserInfo();
+
+            // --- ระบบ Auto-Refresh แบบเบื้องหลัง ทุกๆ 30 วินาที ---
+            setInterval(() => {
+                silentRefreshData();
+            }, 30000);
+        });
+
+        // โหลดแบบมี Spinner (เวลาคลิกปุ่มรีเฟรช หรือ เปลี่ยนวันที่)
+        function refreshData() {
+            fetchHistoryData(false);
+            loadActiveSeniors(false);
+        }
+
+        // โหลดแบบไม่มี Spinner (ดึงอยู่เบื้องหลังเงียบๆ)
+        function silentRefreshData() {
+            fetchHistoryData(true);
+            loadActiveSeniors(true);
+        }
+
+        // ==========================================
+        // ACTIVE SENIORS & CHECKIN VALIDATION
+        // ==========================================
+        function loadActiveSeniors(silent = false) {
+            const container = document.getElementById('active-seniors-container');
+            
+            if (!silent) {
+                container.innerHTML = `<span class="text-sm text-blue-500 flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</span>`;
+            }
+            
+            google.script.run
+                .withSuccessHandler((res) => {
+                    if (res.success) {
+                        isUserCheckedIn = res.isUserCheckedIn;
+
+                        // อัปเดตกรอบแจ้งเตือน (แต่ไม่กวน UI ถ้ามีคนอัปโหลดค้างไว้)
+                        if(!isUserCheckedIn) {
+                            checkinWarning.classList.remove('hidden');
+                            uploadWrapper.classList.add('hidden');
+                            previewSection.classList.add('hidden'); 
+                        } else {
+                            checkinWarning.classList.add('hidden');
+                            uploadWrapper.classList.remove('hidden');
+                        }
+
+                        if (res.data && res.data.length > 0) {
+                            container.innerHTML = res.data.map((s) => {
+                                // เช็คว่าชื่อนี้อยู่ในรายการที่โดนเอาติ๊กออกหรือไม่
+                                const isChecked = !uncheckedWorkers.has(s.name) ? 'checked' : '';
+                                
+                                return `
+                                <label class="bg-white px-3 py-2 rounded-xl border border-blue-200 shadow-sm flex items-center gap-2 cursor-pointer hover:bg-blue-50 transition-colors">
+                                    <input type="checkbox" class="worker-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" value="${s.name}" ${isChecked}>
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-800 text-sm leading-tight">${s.name}</span>
+                                        <span class="text-[11px] text-gray-500 leading-tight mt-0.5"><i class="fa-regular fa-calendar"></i> ${s.dateIn} <i class="fa-regular fa-clock ml-1"></i> ${s.timeIn}</span>
+                                    </div>
+                                </label>
+                                `;
+                            }).join('');
+                        } else {
+                            container.innerHTML = `
+                                <div class="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl border border-red-200 flex items-center gap-2 w-full">
+                                    <i class="fa-solid fa-circle-info text-lg"></i> 
+                                    <span>ขณะนี้ยังไม่มี Senior คนใด Check In เข้ากะ <b>(ระบบบังคับให้ต้องเลือกผู้รับงานอย่างน้อย 1 คน)</b></span>
+                                </div>`;
+                        }
+                    }
+                })
+                .withFailureHandler((err) => {
+                    if (!silent) container.innerHTML = `<span class="text-sm text-red-500">โหลดรายชื่อล้มเหลว: ${err.message}</span>`;
+                })
+                .getActiveSeniors();
+        }
+
+        // ==========================================
+        // HISTORY LOGIC (ดึงข้อมูลทั้งหมดมาไว้ที่ Client แล้วสลับหน้าแบบ 0 วินาที)
+        // ==========================================
+        historyDateFilter.addEventListener('change', () => {
+            currentHistoryPage = 1; // กลับไปหน้า 1 เมื่อเปลี่ยนตัวกรอง
+            fetchHistoryData(false); // เรียก Backend ใหม่เมื่อเปลี่ยนวันที่
+        });
+
+        // ฟังก์ชันไปดึงข้อมูลจาก Backend มาเก็บไว้ใน cachedHistoryData
+        function fetchHistoryData(silent = false) {
+            if (isFetchingHistory) return;
+            isFetchingHistory = true;
+
+            const filterDate = historyDateFilter.value; 
+            
+            if (!silent) {
+                historyList.innerHTML = `<li class="py-8 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin text-indigo-500 text-xl mb-2"></i><br>กำลังโหลดประวัติ...</li>`;
+            }
+            
+            // สั่งโหลด 5,000 รายการทีเดียว เพื่อเอามาทำ Pagination ในเครื่อง
+            google.script.run
+                .withSuccessHandler((res) => {
+                    isFetchingHistory = false;
+                    if (res.success) {
+                        cachedHistoryData = res.data || [];
+                        totalHistoryItems = res.totalItems || cachedHistoryData.length;
+                        
+                        // ถ้าระหว่างรีเฟรช ข้อมูลน้อยลงจนหน้าที่กำลังดูอยู่ไม่มี ให้เด้งกลับหน้าสุดท้าย
+                        const maxPage = Math.max(1, Math.ceil(totalHistoryItems / historyLimit));
+                        if (currentHistoryPage > maxPage) currentHistoryPage = maxPage;
+                        
+                        renderHistoryPage(currentHistoryPage);
+                    } else {
+                        if (!silent) historyList.innerHTML = `<li class="py-4 text-center text-red-500 text-sm">ข้อผิดพลาด: ${res.message}</li>`;
+                    }
+                })
+                .withFailureHandler((err) => {
+                    isFetchingHistory = false;
+                    if (!silent) historyList.innerHTML = `<li class="py-4 text-center text-red-500 text-sm"><i class="fa-solid fa-triangle-exclamation mb-1"></i><br>ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้</li>`;
+                })
+                .getImportF1History(1, 5000, filterDate); // ขอ page 1 แต่ลิมิต 5000 แถว
+        }
+
+        // ฟังก์ชันวาด UI ประวัติ โดยตัดเอาเฉพาะข้อมูลในหน้าปัจจุบัน จาก Array ในหน่วยความจำ (ทำงาน 0 วินาที)
+        function renderHistoryPage(page) {
+            currentHistoryPage = page;
+            const totalPages = Math.max(1, Math.ceil(totalHistoryItems / historyLimit));
+
+            if (cachedHistoryData.length === 0) {
+                const dateMsg = historyDateFilter.value ? `<br>ในวันที่คุณเลือก` : ``;
+                historyList.innerHTML = `<li class="py-8 text-center text-gray-500 text-sm"><i class="fa-regular fa-folder-open text-3xl text-gray-300 mb-2"></i><br>ไม่มีประวัติการวางงาน${dateMsg}</li>`;
+                historyInfo.textContent = 'ไม่พบข้อมูล';
+                pageIndicator.textContent = '0 / 0';
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                return;
+            }
+
+            // คำนวณช่วงข้อมูลที่จะเอามาแสดง
+            const startIndex = (page - 1) * historyLimit;
+            const endIndex = startIndex + historyLimit;
+            const pageData = cachedHistoryData.slice(startIndex, endIndex);
+
+            let html = '';
+            pageData.forEach(item => {
+                const summaryHtml = item.summary ? `<div class="mt-2 text-[11px] text-gray-600 bg-gray-50 p-1.5 rounded border border-gray-100 flex items-start gap-1"><i class="fa-solid fa-users-gear text-indigo-400 mt-0.5"></i> <span>${item.summary}</span></div>` : '';
+                
+                html += `
+                    <li class="py-3 hover:bg-gray-50 px-2 rounded-lg transition-colors border-b border-gray-50 last:border-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-medium text-[13px] text-gray-800 truncate" title="${item.filename}">
+                                <i class="fa-regular fa-file-excel text-green-500 mr-1"></i> ${item.filename}
+                            </span>
+                            <span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded whitespace-nowrap ml-1 flex-shrink-0">ครั้งที่ ${item.count}</span>
+                        </div>
+                        <div class="flex flex-col text-[11px] text-gray-500 gap-0.5">
+                            <span><i class="fa-regular fa-clock w-3"></i> ${item.timestamp}</span>
+                            <span><i class="fa-regular fa-user w-3"></i> ${item.uploader}</span>
+                        </div>
+                        ${summaryHtml}
+                    </li>
+                `;
+            });
+            historyList.innerHTML = html;
+
+            const startItemDisplay = startIndex + 1;
+            const endItemDisplay = Math.min(endIndex, totalHistoryItems);
+            
+            historyInfo.textContent = `แสดง ${startItemDisplay} - ${endItemDisplay} จากทั้งหมด ${totalHistoryItems}`;
+            pageIndicator.textContent = `${page} / ${totalPages}`;
+
+            btnPrev.disabled = page <= 1;
+            btnNext.disabled = page >= totalPages;
+        }
+
+        // กดปุ่มเปลี่ยนหน้า สั่ง render ทันทีโดยไม่ต้องดึงข้อมูลใหม่
+        btnPrev.addEventListener('click', () => { 
+            if (currentHistoryPage > 1) renderHistoryPage(currentHistoryPage - 1); 
+        });
+        btnNext.addEventListener('click', () => { 
+            const totalPages = Math.ceil(totalHistoryItems / historyLimit);
+            if (currentHistoryPage < totalPages) renderHistoryPage(currentHistoryPage + 1); 
+        });
+
+        // ==========================================
+        // UPLOAD LOGIC
+        // ==========================================
+        dropZone.addEventListener('click', () => { if(isUserCheckedIn) fileInput.click(); });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if(isUserCheckedIn) dropZone.classList.add('drag-active'); });
+        ['dragleave', 'dragend'].forEach(type => { dropZone.addEventListener(type, () => dropZone.classList.remove('drag-active')); });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag-active'); if (isUserCheckedIn && e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (isUserCheckedIn && e.target.files.length) handleFile(e.target.files[0]); });
+        btnRemove.addEventListener('click', resetUI);
+
+        function handleFile(file) {
+            const validExts = ['.xlsx', '.xls', '.csv'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            
+            if (!validExts.includes(fileExt)) {
+                Swal.fire({ icon: 'error', title: 'ไฟล์ไม่รองรับ', text: 'กรุณาอัปโหลดไฟล์ Excel (.xlsx, .xls) เท่านั้น' });
+                return;
+            }
+
+            const reader = new FileReader();
+            Swal.fire({ title: 'กำลังอ่านไฟล์และคัดกรองงานไอที...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonArr = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    
+                    if (jsonArr.length <= 1) {
+                        Swal.fire({ icon: 'error', title: 'ไฟล์ว่างเปล่า', text: 'ไม่พบข้อมูลในไฟล์ Excel นี้' });
+                        resetUI(); return;
+                    }
+
+                    const headers = jsonArr[0];
+                    const targetColumnName = "Services Catalog Main";
+                    const catalogIndex = headers.findIndex(h => String(h || "").trim() === targetColumnName);
+                    
+                    let filteredArr = [headers]; 
+                    
+                    if (catalogIndex !== -1) {
+                        for (let i = 1; i < jsonArr.length; i++) {
+                            const row = jsonArr[i];
+                            const catalogValue = String(row[catalogIndex] || "").trim();
+                            if (catalogValue === "งานไอที") filteredArr.push(row);
+                        }
+                        
+                        if (filteredArr.length <= 1) {
+                            Swal.fire({ icon: 'warning', title: 'ไม่พบข้อมูลงานไอที', text: 'ไม่มีข้อมูลที่ระบุว่าเป็น "งานไอที" เลย' });
+                            resetUI(); return;
+                        }
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'รูปแบบไฟล์ผิดพลาด', text: `ไม่พบคอลัมน์ชื่อ "${targetColumnName}"` });
+                        resetUI(); return;
+                    }
+
+                    currentExcelData = filteredArr;
+                    currentFileName = file.name;
+                    
+                    renderPreview();
+                    Swal.close();
+
+                } catch (err) {
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถอ่านไฟล์ Excel ได้' });
+                    resetUI();
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderPreview() {
+            if (!currentExcelData || currentExcelData.length === 0) return;
+
+            dropZone.classList.add('hidden');
+            fileInfo.classList.remove('hidden');
+            previewSection.classList.remove('hidden');
+            
+            fileNameEl.textContent = currentFileName;
+            rowCountEl.textContent = `พบข้อมูล "งานไอที": ${currentExcelData.length - 1} แถว`;
+
+            const headers = currentExcelData[0];
+            let theadHtml = '<tr>';
+            headers.forEach(h => { theadHtml += `<th scope="col" class="px-4 py-3 border-b whitespace-nowrap">${h || '-'}</th>`; });
+            theadHtml += '</tr>';
+            previewHead.innerHTML = theadHtml;
+
+            let tbodyHtml = '';
+            const previewLimit = Math.min(6, currentExcelData.length);
+            for (let i = 1; i < previewLimit; i++) {
+                tbodyHtml += '<tr class="bg-white hover:bg-gray-50">';
+                currentExcelData[i].forEach(cell => { tbodyHtml += `<td class="px-4 py-2 border-b whitespace-nowrap truncate max-w-[200px]">${cell}</td>`; });
+                tbodyHtml += '</tr>';
+            }
+            if (currentExcelData.length > 6) {
+                tbodyHtml += `<tr><td colspan="${headers.length}" class="px-4 py-3 text-center text-gray-500 italic bg-gray-50">... และข้อมูลอีก ${currentExcelData.length - 6} แถว</td></tr>`;
+            }
+            previewBody.innerHTML = tbodyHtml;
+        }
+
+        function resetUI() {
+            currentExcelData = null; currentFileName = ""; fileInput.value = "";
+            dropZone.classList.remove('hidden'); fileInfo.classList.add('hidden'); previewSection.classList.add('hidden');
+            previewHead.innerHTML = ''; previewBody.innerHTML = '';
+        }
+
+        // ==========================================
+        // SUBMIT LOGIC 
+        // ==========================================
+        btnSubmit.addEventListener('click', () => {
+            if(!isUserCheckedIn) {
+                Swal.fire('ปฏิเสธการเข้าถึง', 'คุณยังไม่ได้ลงเวลาเข้างาน (Check In) กรุณาทำรายการก่อนครับ', 'error');
+                return;
+            }
+
+            if (!currentExcelData || currentExcelData.length === 0) {
+                Swal.fire('ข้อผิดพลาด', 'กรุณาอัปโหลดไฟล์ก่อน', 'warning'); return;
+            }
+
+            const selectedCheckboxes = document.querySelectorAll('.worker-checkbox:checked');
+            const selectedWorkers = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            // เพิ่มการเช็ค: ต้องมีคนถูกเลือกอย่างน้อย 1 คน
+            if (selectedWorkers.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ขัดข้อง',
+                    text: 'กรุณาเลือกรายชื่อ Senior อย่างน้อย 1 คน เพื่อดำเนินการรับงานครับ',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+
+            let actionTextHtml = `<span class="font-bold text-[#4a7c55] text-sm tracking-wide bg-green-50 px-3 py-1 rounded-md">REPLACE + AUTO ASSIGN</span>`;
+
+            const totalRows = currentExcelData.length - 1;
+
+            const customPopupHtml = `
+                <div class="font-sans px-2 md:px-6 py-2">
+                    <div class="mx-auto flex items-center justify-center h-[100px] w-[100px] rounded-full border-[3px] border-[#86a5b6] text-[#86a5b6] text-6xl mb-6 font-light">?</div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-8 tracking-wide">Confirm Save?</h2>
+
+                    <div class="border border-gray-200 rounded-2xl p-6 mb-8 bg-white shadow-sm text-left">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                            <span class="text-gray-500 font-medium">File Name:</span>
+                            <span class="font-bold text-gray-800 sm:text-right w-full sm:w-64 md:w-80 truncate" title="${currentFileName}">${currentFileName}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-gray-500 font-medium">Rows (IT Only):</span>
+                            <span class="font-bold text-green-600 text-xl">${totalRows.toLocaleString()}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                            <span class="text-gray-500 font-medium whitespace-nowrap">จ่ายงานให้ (ผู้รับ):</span>
+                            <span class="font-semibold text-blue-600 text-sm text-right bg-blue-50 px-2 py-1 rounded w-full sm:w-auto overflow-hidden text-ellipsis">${selectedWorkers.length} คนที่ถูกเลือก</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-5">
+                            <span class="text-gray-500 font-medium">Action:</span>
+                            ${actionTextHtml}
+                        </div>
+                        
+                        <div class="border-t border-dashed border-gray-300 pt-5 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                            <span class="text-gray-500 text-sm font-medium">Recorded By:</span>
+                            <div class="border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-800 flex items-center gap-3 font-semibold bg-gray-50 shadow-sm">
+                                <i class="fa-solid fa-user text-gray-400"></i>
+                                <span>${currentUserInfo}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-gray-500 text-base mb-2 font-medium">Confirm to save this file?</p>
+                </div>
+            `;
+
+            Swal.fire({
+                html: customPopupHtml,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Confirm',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: '!rounded-3xl !p-6 md:!p-8 !w-[95%] !max-w-2xl',
+                    confirmButton: '!bg-[#4a7c55] hover:!bg-[#3a6243] !text-white !font-bold !py-3 !px-8 !rounded-xl !mx-2 md:!mx-4 !border-none !shadow-md transition-colors !text-lg',
+                    cancelButton: '!bg-[#9ba3af] hover:!bg-[#868e99] !text-white !font-bold !py-3 !px-8 !rounded-xl !mx-2 md:!mx-4 !border-none !shadow-md transition-colors !text-lg',
+                    htmlContainer: '!m-0',
+                    actions: '!mt-6'
+                },
+                buttonsStyling: false,
+                showCloseButton: false,
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'กำลังประมวลผลข้อมูล และจ่ายงาน...',
+                        html: 'กรุณารอสักครู่ ห้ามปิดหน้านี้',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    google.script.run
+                        .withSuccessHandler((res) => {
+                            if (res.success) {
+                                let assignHtml = `<div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-left text-sm">
+                                                    <b class="text-indigo-700 block mb-2"><i class="fa-solid fa-users-gear"></i> สรุปการจ่ายงาน:</b>
+                                                    <span class="text-gray-700">${res.assignMsg}</span>`;
+                                                    
+                                if (res.duplicateCount > 0 || res.duplicateAssignedCount > 0) {
+                                    const totalDupes = (res.duplicateCount || 0) + (res.duplicateAssignedCount || 0);
+                                    assignHtml += `<div class="mt-3 text-[13px] bg-amber-50 p-3 rounded-lg border border-amber-200 text-amber-800">
+                                                    <div class="font-bold flex items-center gap-1.5 mb-1 text-amber-700">
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> ข้ามงานที่รหัส Task No. ซ้ำรวม ${totalDupes} งาน
+                                                    </div>`;
+                                    if(res.duplicateAssignedCount > 0) {
+                                        assignHtml += `<div class="ml-5">- มีผู้รับผิดชอบแล้วใน Assigned_Tasks: <b>${res.duplicateAssignedCount}</b> งาน</div>`;
+                                    }
+                                    if(res.duplicateCount > 0) {
+                                        assignHtml += `<div class="ml-5">- มีจ่ายให้คิวไปแล้วใน AddName: <b>${res.duplicateCount}</b> งาน</div>`;
+                                    }
+                                    assignHtml += `</div>`;
+                                }
+                                assignHtml += `</div>`;
+
+                                Swal.fire({
+                                    icon: 'success', title: 'บันทึกข้อมูลสำเร็จ!',
+                                    html: `นำเข้าข้อมูล "งานไอที" คลังหลัก <b>${res.rowCount}</b> แถว<br>
+                                           <span class="text-sm text-gray-500">ลำดับการ Import วันนี้: ${res.dailyCount}</span>
+                                           ${assignHtml}`,
+                                    customClass: { popup: '!rounded-3xl !max-w-2xl' }
+                                }).then(() => {
+                                    resetUI();
+                                    silentRefreshData(); // เรียกให้โหลดประวัติใหม่แบบเงียบๆ ไม่ต้องแสดง Loading รบกวนหน้าจอ
+                                });
+                            } else {
+                                if(res.message.includes("หมดเวลาเชื่อมต่อ")) {
+                                    Swal.fire('Session หมดอายุ', 'กรุณารีเฟรชหน้าเว็บและล็อกอินใหม่อีกครั้ง', 'warning');
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'ไม่สามารถดำเนินการได้',
+                                        html: `<span class="text-red-500 font-medium">${res.message}</span>`,
+                                        confirmButtonColor: '#d33'
+                                    });
+                                }
+                            }
+                        })
+                        .withFailureHandler((err) => {
+                            Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+                        })
+                        .processImportF1Data(currentExcelData, currentFileName, selectedWorkers);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

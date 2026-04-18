@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Service - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #143d28; /* Dark Green Base */
+            /* Soft Radial Gradient */
+            background-image: radial-gradient(circle at center, #1b4f3a 0%, #0f2e1e 100%);
+            min-height: 100vh;
+        }
+
+        /* Styling for form switching animation */
+        .form-container {
+            transition: all 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            visibility: hidden;
+        }
+
+        .form-container.active {
+            max-height: 1000px;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Custom Input Styling */
+        .custom-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem; /* Left padding for icon */
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .custom-input:focus {
+            border-color: #143d28;
+            box-shadow: 0 0 0 2px rgba(20, 61, 40, 0.1);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            cursor: pointer;
+        }
+
+        /* Loading Spinner Overlay */
+        #loadingOverlay {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-4">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="flex items-center space-x-3 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+            <svg class="animate-spin h-6 w-6 text-[#143d28]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-gray-700 font-medium">Processing...</span>
+        </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 relative mt-10">
+        
+        <!-- Logo Circle (Floating Top) -->
+        <div class="flex justify-center mb-6">
+            <div class="w-24 h-24 bg-[#143d28] rounded-full flex items-center justify-center shadow-lg -mt-20 border-4 border-white">
+                <!-- Icon: Ticket/Voucher style -->
+                <i class="fas fa-ticket-alt text-4xl text-white transform -rotate-45"></i>
+            </div>
+        </div>
+
+        <!-- Header Text -->
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-[#143d28] tracking-wide uppercase">Store Service </h1>
+            <p class="text-xs text-gray-500 tracking-[0.2em] mt-1 font-semibold uppercase">MANAGEMENT PORTAL</p>
+        </div>
+
+        <!-- Message Box -->
+        <div id="messageBox" class="hidden p-3 rounded-md mb-4 text-sm transition-all duration-300 text-center"></div>
+
+        <!-- Login Form Container -->
+        <div id="loginForm" class="form-container active">
+            <form id="login" onsubmit="handleLogin(event)">
+                <div class="space-y-5">
+                    
+                    <!-- Username -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">USERNAME</label>
+                        <div class="relative">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" id="loginUsername" placeholder="Username" class="custom-input" required>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">PASSWORD</label>
+                        <div class="relative">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="loginPassword" placeholder="Password" class="custom-input" required>
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility(this, 'loginPassword')"></i>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="w-full bg-[#143d28] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#0f2e1e] transition-colors duration-200 shadow-md mt-4">
+                        Sign In
+                    </button>
+
+                    <!-- Change Password Link -->
+                    <div class="text-center mt-6">
+                        <a href="#" class="text-sm text-gray-800 hover:text-[#143d28] font-medium" onclick="event.preventDefault(); switchForm('forgotPasswordForm')">
+                            Forgot Password?
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Change Password / Forgot Password Form Container -->
+        <div id="forgotPasswordForm" class="form-container">
+            <!-- Step 1: Verification -->
+            <div id="forgotStep1">
+                <h2 class="text-lg font-bold text-center text-[#143d28] mb-2">Verify Identity</h2>
+                <p class="text-xs text-gray-500 text-center mb-6">Enter username and phone number to verify account ownership.</p>
+                
+                <form id="forgotVerify" onsubmit="handleForgotVerify(event)">
+                    <div class="space-y-4">
+                         <div>
+                             <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">USERNAME</label>
+                             <div class="relative">
+                                 <i class="fas fa-user input-icon"></i>
+                                 <input type="text" id="forgotUsername" placeholder="Username" class="custom-input" required>
+                             </div>
+                         </div>
+                         <div>
+                             <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">PHONE NUMBER</label>
+                             <div class="relative">
+                                 <i class="fas fa-phone input-icon"></i>
+                                 <input type="tel" id="forgotPhone" placeholder="Phone (9 digits after 0)" class="custom-input" required pattern="[0-9]{9}" title="Please enter 9 digits (omit leading 0)">
+                             </div>
+                         </div>
+                    </div>
+                    <button type="submit" class="w-full bg-[#143d28] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#0f2e1e] transition-colors duration-200 shadow-md mt-6">
+                        Verify
+                    </button>
+                    <div class="text-center mt-4">
+                        <a href="#" class="text-xs text-gray-500 hover:text-[#143d28]" onclick="event.preventDefault(); switchForm('loginForm')">Back to Login</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 2: Reset Password -->
+            <div id="forgotStep2" class="hidden">
+                <h2 class="text-lg font-bold text-center text-[#143d28] mb-2">Reset Password</h2>
+                <p class="text-xs text-gray-500 text-center mb-6">For user <strong id="resetUsernameDisplay" class="text-[#143d28]"></strong></p>
+                
+                <form id="forgotReset" onsubmit="handleResetPassword(event)">
+                     <input type="hidden" id="resetUsername">
+                     <input type="hidden" id="resetPhone">
+                    <div class="space-y-4">
+                         <div>
+                             <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">NEW PASSWORD</label>
+                             <div class="relative">
+                                 <i class="fas fa-lock input-icon"></i>
+                                 <input type="password" id="resetPassword" placeholder="New Password (min 6 chars)" class="custom-input" required minlength="6">
+                                 <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility(this, 'resetPassword')"></i>
+                             </div>
+                         </div>
+                         <div>
+                             <label class="block text-xs font-bold text-gray-800 uppercase mb-2 ml-1">CONFIRM PASSWORD</label>
+                             <div class="relative">
+                                 <i class="fas fa-check-circle input-icon"></i>
+                                 <input type="password" id="resetConfirmPassword" placeholder="Confirm New Password" class="custom-input" required minlength="6">
+                                 <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility(this, 'resetConfirmPassword')"></i>
+                             </div>
+                         </div>
+                    </div>
+                    <button type="submit" class="w-full bg-[#143d28] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#0f2e1e] transition-colors duration-200 shadow-md mt-6">
+                        Save New Password
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const messageBoxEl = document.getElementById('messageBox');
+        const loadingOverlayEl = document.getElementById('loadingOverlay');
+        
+        const forgotStep1El = document.getElementById('forgotStep1');
+        const forgotStep2El = document.getElementById('forgotStep2');
+
+        let currentFormId = 'loginForm';
+
+        // --- Utility Functions ---
+
+        function showLoading() {
+            loadingOverlayEl.classList.remove('hidden');
+            setTimeout(() => loadingOverlayEl.classList.remove('opacity-0'), 10);
+        }
+
+        function hideLoading() {
+            loadingOverlayEl.classList.add('opacity-0');
+            setTimeout(() => loadingOverlayEl.classList.add('hidden'), 300);
+        }
+
+        function showMessage(type, message) {
+            if (!messageBoxEl) return;
+            messageBoxEl.innerHTML = message;
+            messageBoxEl.className = 'p-3 rounded-md mb-4 text-sm transition-all duration-300 text-center border';
+            
+            if (type === 'success') {
+                messageBoxEl.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+            } else if (type === 'error') {
+                messageBoxEl.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+            } else {
+                messageBoxEl.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-200');
+            }
+            messageBoxEl.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            if (messageBoxEl) messageBoxEl.classList.add('hidden');
+        }
+
+        function switchForm(formId) {
+            hideMessage();
+            const currentFormEl = document.getElementById(currentFormId);
+            if (currentFormEl) currentFormEl.classList.remove('active');
+            
+            const newFormEl = document.getElementById(formId);
+            if (newFormEl) newFormEl.classList.add('active');
+            
+            currentFormId = formId;
+
+            if (formId === 'loginForm') {
+                document.getElementById('login').reset();
+                // Reset forgot password state when going back to login
+                forgotStep1El.classList.remove('hidden');
+                forgotStep2El.classList.add('hidden');
+                document.getElementById('forgotVerify').reset();
+                document.getElementById('forgotReset').reset();
+            }
+        }
+
+        function togglePasswordVisibility(icon, inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+
+        // --- Logic Handlers ---
+
+        function handleLogin(event) {
+            event.preventDefault();
+            hideMessage();
+            showLoading();
+
+            const credentials = {
+                username: document.getElementById('loginUsername').value.trim(),
+                password: document.getElementById('loginPassword').value
+            };
+
+            if (!credentials.username || !credentials.password) {
+                hideLoading();
+                showMessage('error', 'Please enter username and password.');
+                return;
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(response => {
+                        hideLoading();
+                        if (response && response.success) {
+                            showMessage('success', 'Login successful! Loading...');
+                            if (response.redirectUrl) {
+                                window.top.location.href = response.redirectUrl;
+                            } else {
+                                showMessage('error', 'Error: Redirect URL missing.');
+                            }
+                        } else {
+                            showMessage('error', (response && response.message) || 'Invalid username or password.');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        hideLoading();
+                        console.error('Login Failure:', error);
+                        showMessage('error', `Connection Error: ${error.message}`);
+                    })
+                    .doLogin(credentials);
+            } else {
+                hideLoading();
+                showMessage('error', 'Cannot connect to server. (Running Locally?)');
+            }
+        }
+
+        function handleForgotVerify(event) {
+            event.preventDefault();
+            hideMessage();
+            showLoading();
+
+            const phoneInput = document.getElementById('forgotPhone').value.trim();
+            const verificationData = {
+                username: document.getElementById('forgotUsername').value.trim(),
+                phone: '0' + phoneInput
+            };
+
+            if (!verificationData.username || !/^[0-9]{9}$/.test(phoneInput)) {
+                hideLoading();
+                showMessage('error', 'Please enter a valid username and 9-digit phone number.');
+                return;
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(response => {
+                        hideLoading();
+                        if (response && response.success) {
+                            document.getElementById('resetUsername').value = verificationData.username;
+                            document.getElementById('resetPhone').value = verificationData.phone;
+                            document.getElementById('resetUsernameDisplay').textContent = verificationData.username;
+
+                            forgotStep1El.classList.add('hidden');
+                            forgotStep2El.classList.remove('hidden');
+                        } else {
+                            showMessage('error', (response && response.message) || 'Invalid data or user not found.');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        hideLoading();
+                        showMessage('error', `Error: ${error.message}`);
+                    })
+                    .doForgotPassword(verificationData);
+            } else {
+                hideLoading();
+                showMessage('error', 'Cannot connect to server.');
+            }
+        }
+
+        function handleResetPassword(event) {
+            event.preventDefault();
+            hideMessage();
+
+            const newPassword = document.getElementById('resetPassword').value;
+            const confirmNewPassword = document.getElementById('resetConfirmPassword').value;
+
+            if (newPassword !== confirmNewPassword) {
+                showMessage('error', 'Passwords do not match.');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showMessage('error', 'Password must be at least 6 characters.');
+                return;
+            }
+
+            showLoading();
+
+            const resetData = {
+                username: document.getElementById('resetUsername').value,
+                phone: document.getElementById('resetPhone').value,
+                newPassword: newPassword
+            };
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(response => {
+                        hideLoading();
+                        if (response && response.success) {
+                            showMessage('success', 'Password reset successful! Please log in again.');
+                            switchForm('loginForm');
+                        } else {
+                            showMessage('error', (response && response.message) || 'Unable to reset password.');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        hideLoading();
+                        showMessage('error', `Error: ${error.message}`);
+                    })
+                    .doResetPassword(resetData);
+            } else {
+                hideLoading();
+                showMessage('error', 'Cannot connect to server.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (messageBoxEl) {
+                switchForm('loginForm');
+            }
+        });
+    </script>
+</body>
+</html>

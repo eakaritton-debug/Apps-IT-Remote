@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Service </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* Custom Scrollbar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        /* Sidebar Styling & Animation Classes */
+        #mainSidebar {
+            background: linear-gradient(180deg, #143d28 0%, #0f2e1e 100%);
+            color: #d1fae5;
+            width: 18rem; /* 288px */
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40; /* ให้อยู่เหนือ MainContent เสมอ */
+        }
+        
+        /* เพิ่ม Animation ให้ส่วนหัวเลื่อนอย่างสมูท */
+        #headerLeftContent {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Default Mobile (Hidden) */
+        @media (max-width: 767px) {
+            #mainSidebar { transform: translateX(-100%); width: 18rem; }
+            #mainContent { margin-left: 0; }
+            body.mobile-sidebar-open #mainSidebar { transform: translateX(0); }
+            body.mobile-sidebar-open #mobileMenuOverlay { display: block; }
+        }
+
+        #sidebarToggleBtn { display: none; } /* ซ่อนปุ่มเปิดปิด sidebar บนมือถือ (ใช้ overlay แทน) */
+
+        /* Desktop States */
+        @media (min-width: 768px) {
+            #sidebarToggleBtn { display: flex; }
+            
+            /* --- ระบบ Overlay (แก้ Iframe แล็ก และแก้หน้าเด้งลง) --- */
+            /* ล็อคขนาด MainContent ให้เท่ากับตอนพับเสมอ Iframe จะได้ไม่ต้องย่อ/ขยาย */
+            #mainContent {
+                margin-left: 5rem !important; 
+            }
+
+            /* เมื่อเปิด (โหมดปกติ) - Sidebar จะกว้างออกและ "ลอยทับ" เนื้อหาบางส่วน */
+            body.desktop-sidebar-open #mainSidebar { width: 18rem; transform: translateX(0); }
+            body.desktop-sidebar-open #sidebarToggleIcon { transform: rotate(0deg); }
+            
+            /* ใช้ transform เลื่อนกลุ่มข้อความ Header หลบ Sidebar แทนการใช้ padding เพื่อป้องกันหน้ากระตุก/ดันลง */
+            body.desktop-sidebar-open #headerLeftContent { transform: translateX(13.5rem); }
+
+            /* เมื่อพับเก็บ (โหมด Mini Sidebar) - กลับมาขนาดปกติ */
+            body.desktop-sidebar-closed #mainSidebar { width: 5rem; transform: translateX(0); }
+            body.desktop-sidebar-closed #sidebarToggleIcon { transform: rotate(180deg); }
+            
+            /* Header กลับมาตำแหน่งเดิม */
+            body.desktop-sidebar-closed #headerLeftContent { transform: translateX(0); }
+            
+            /* --- ซ่อน/แสดง องค์ประกอบเมื่อพับเก็บ --- */
+            body.desktop-sidebar-closed .sidebar-text,
+            body.desktop-sidebar-closed .sidebar-header-text,
+            body.desktop-sidebar-closed .sidebar-profile-info,
+            body.desktop-sidebar-closed .sidebar-cog-icon,
+            body.desktop-sidebar-closed .fa-chevron-down {
+                display: none !important;
+            }
+            
+            /* แสดงไอคอนพิเศษตอนพับ (โลโก้ร้านแบบย่อ) */
+            body.desktop-sidebar-closed .sidebar-header-icon {
+                display: block !important;
+            }
+
+            /* จัดกึ่งกลางไอคอนเมนู */
+            body.desktop-sidebar-closed .sidebar-link,
+            body.desktop-sidebar-closed .nav-group-toggle,
+            body.desktop-sidebar-closed #sidebarLogoutBtn {
+                justify-content: center;
+                padding-left: 0;
+                padding-right: 0;
+                width: 3rem; /* ทำเป็นทรงสี่เหลี่ยมจัตุรัส */
+                height: 3rem;
+                margin: 0.25rem auto;
+            }
+            body.desktop-sidebar-closed .sidebar-link i,
+            body.desktop-sidebar-closed .nav-group-toggle i,
+            body.desktop-sidebar-closed #sidebarLogoutBtn i,
+            body.desktop-sidebar-closed .dot-icon {
+                margin-right: 0 !important;
+                font-size: 1.25rem;
+            }
+            
+            /* ปรับรูปแบบปุ่ม Active เมื่อพับเก็บ */
+            body.desktop-sidebar-closed .sidebar-link.active {
+                border-left-width: 0;
+                border-radius: 0.5rem;
+                margin-left: auto;
+                margin-right: auto;
+                justify-content: center;
+            }
+
+            /* --- อัพเดตแก้ไข: ปรับ Profile Card เมื่อพับ ให้เป็นวงกลมเต็มๆ --- */
+            body.desktop-sidebar-closed .profile-card-container {
+                width: 3.5rem !important;
+                height: 3.5rem !important;
+                padding: 0 !important;
+                border-radius: 50% !important; /* บังคับเป็นวงกลม */
+                justify-content: center;
+                align-items: center;
+                margin: 0 auto;
+                background-color: transparent;
+                border: 2px solid transparent;
+            }
+            body.desktop-sidebar-closed .profile-card-container:hover {
+                background-color: rgba(255,255,255,0.05);
+            }
+            body.desktop-sidebar-closed .profile-flex {
+                justify-content: center;
+                width: 100%;
+            }
+            body.desktop-sidebar-closed .profile-pic-wrapper {
+                margin: 0 !important;
+                width: 2.5rem;
+                height: 2.5rem;
+            }
+            body.desktop-sidebar-closed #sidebarProfilePic {
+                width: 2.5rem;
+                height: 2.5rem;
+            }
+            
+            /* ปรับ Submenu ให้อยู่กึ่งกลาง */
+            body.desktop-sidebar-closed .nav-group-inner {
+                justify-content: center;
+                width: 100%;
+            }
+            
+            /* ปรับเส้นกั้น */
+            body.desktop-sidebar-closed .sidebar-divider {
+                margin-left: 1rem;
+                margin-right: 1rem;
+            }
+        }
+
+        .sidebar-link {
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .sidebar-link:hover {
+            color: white;
+            background-color: rgba(255,255,255,0.05);
+            padding-left: 1.25rem;
+        }
+
+        .sidebar-link.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: #34d399;
+            font-weight: 500;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin-right: 0.5rem;
+        }
+        
+        .sidebar-link.active i { color: #34d399; }
+        
+        /* ตั้งค่ารูปภาพโปรไฟล์พื้นฐาน */
+        #sidebarProfilePic {
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        /* Welcome Shortcut Grid */
+        .shortcut-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .shortcut-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Toast Notifications */
+        #toastContainer {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none;
+        }
+        
+        .toast-item {
+            pointer-events: auto; transform: translateX(100%);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); opacity: 0;
+        }
+        
+        .toast-item.show { transform: translateX(0); opacity: 1; }
+
+        /* Access Denied Box */
+        #accessDeniedBox {
+            position: fixed; top: 20px; right: 20px; 
+            background-color: #fee2e2; color: #991b1b;
+            padding: 1rem; border-radius: 0.5rem; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            z-index: 1000; display: none; max-width: 320px; 
+            border-left: 4px solid #dc2626;
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Utilities */
+        #mobileMenuOverlay { backdrop-filter: blur(2px); display: none; }
+        .spin-slow { animation: spin 3s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Preloaded Iframe Layers */
+        .iframe-layer {
+            transition: opacity 0.2s ease-in-out;
+        }
+
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-[#f3f4f6] desktop-sidebar-open">
+
+    <!-- Loading Spinner (เต็มหน้าจอ บัง Sidebar) -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 flex items-center justify-center z-[9999] backdrop-blur-sm transition-opacity duration-300">
+        <div class="flex flex-col items-center p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+            <div class="w-12 h-12 border-4 border-[#143d28] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <span class="text-[#143d28] font-bold text-sm tracking-wide">กำลังโหลดข้อมูล...</span>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="mainSidebar" class="flex flex-col fixed inset-y-0 left-0 shadow-2xl">
+        
+        <!-- ปุ่ม Toggle ขยาย/ย่อ Sidebar -->
+        <button id="sidebarToggleBtn" class="absolute top-6 -right-5 w-10 h-10 bg-[#143d28] border-2 border-[#34d399] text-[#34d399] rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-[#0f2e1e] hover:text-white transition-all z-50">
+            <i class="fas fa-chevron-left transition-transform duration-300" id="sidebarToggleIcon"></i>
+        </button>
+
+        <!-- Header -->
+        <div class="pt-8 pb-4 text-center h-24 flex flex-col justify-center items-center">
+            <div class="sidebar-header-text w-full">
+                <h1 class="text-2xl font-bold text-white tracking-wider truncate">STORE SERVICE</h1>
+                <p class="text-xs text-green-400 tracking-[0.3em] uppercase font-semibold mt-1 truncate">SYSTEM</p>
+            </div>
+            <!-- แสดงเฉพาะตอนพับ Sidebar -->
+            <div class="sidebar-header-icon hidden text-3xl text-[#34d399]" style="display: none;">
+                <i class="fas fa-store"></i>
+            </div>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="px-3 md:px-5 mb-4">
+            <div class="bg-[#1f5236] rounded-xl p-3 flex items-center justify-between shadow-inner border border-[#2d6a4f] group hover:border-[#34d399] transition-all cursor-pointer relative profile-card-container" 
+                 onclick="window.loadPage('UserProfile')" title="Edit Profile">
+                
+                <div class="flex items-center overflow-hidden w-full profile-flex">
+                    <div class="relative flex-shrink-0 profile-pic-wrapper flex items-center justify-center">
+                        <img id="sidebarProfilePic" class="h-10 w-10 rounded-full bg-gray-300 border-2 border-[#143d28]"
+                             src="https://placehold.co/40x40/EFEFEF/AAAAAA?text=U" alt="Profile">
+                        <div class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-[#1f5236]"></div>
+                    </div>
+                    <div class="ml-3 overflow-hidden sidebar-profile-info">
+                        <p id="sidebarUserName" class="text-sm font-bold text-white truncate">Loading...</p>
+                        <div class="flex items-center">
+                            <span class="text-xs text-green-300">● Online</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-[#4ade80] opacity-70 group-hover:opacity-100 transition-opacity sidebar-cog-icon">
+                     <i class="fas fa-cog"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto sidebar-scroll px-4 pb-4">
+            <p class="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-4 sidebar-text">Main Menu</p>
+            
+            <nav id="sidebarNav" class="space-y-1">
+                 <!-- Home / Dashboard -->
+                 <a href="#" data-page="Dashboard" data-page-type="Welcome" class="sidebar-link active flex items-center px-4 py-3 rounded-md text-sm" title="Home">
+                     <i class="fas fa-home w-5 mr-3 text-center"></i>
+                     <span class="sidebar-text">Home</span>
+                 </a>
+
+                 <a href="#" data-page="Dashboard_02" data-page-type="Dashboard" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="Analytics Dashboard">
+                     <i class="fas fa-chart-pie w-5 mr-3 text-center"></i>
+                     <span class="sidebar-text">Analytics Dashboard</span>
+                 </a>                 
+
+                 <a href="#" data-page="Checkinsenior" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="Check (In-Out)">
+                     <i class="fas fa-map-marker-alt w-5 mr-3 text-center"></i>
+                     <span class="sidebar-text">Check (In-Out)</span>
+                 </a>
+
+                 <!-- Sales Operations -->
+                 <a href="#" data-page="ImportF1" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="วางงาน F1">
+                     <i class="fas fa-cash-register w-5 mr-3 text-center"></i>
+                     <span class="sidebar-text">วางงาน F1</span>
+                 </a>
+
+                 <hr class="sidebar-divider my-4 mx-4 border-white/10">
+                 
+                 <!-- Work Group -->
+                 <p class="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-4 sidebar-text">ทำงาน</p>
+                 
+                 <a href="#" data-page="High" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="งานด่วน">
+                     <i class="fas fa-bolt w-5 mr-3 text-center text-yellow-400"></i>
+                     <span class="sidebar-text">งานด่วน</span>
+                 </a> 
+                 <a href="#" data-page="Low" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="งานปกติ">
+                     <i class="fas fa-tasks w-5 mr-3 text-center text-blue-400"></i>
+                     <span class="sidebar-text">งานปกติ</span>
+                 </a>
+                 <a href="#" data-page="Work" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="ประวัติการทำงาน">
+                     <i class="fas fa-history w-5 mr-3 text-center text-gray-400"></i>
+                     <span class="sidebar-text">ประวัติการทำงาน</span>
+                 </a>                                                                
+                 <a href="#" data-page="CheckBranch" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="เช็คสาขา">
+                     <i class="fas fa-store-alt w-5 mr-3 text-center text-green-400"></i>
+                     <span class="sidebar-text">เช็คสาขา</span>
+                 </a>
+
+                 <hr class="sidebar-divider my-4 mx-4 border-white/10">
+                 
+                 <!-- Admin Tools -->
+                 <a href="#" data-page="UserManagement" class="sidebar-link flex items-center px-4 py-3 rounded-md text-sm" title="User Manager">
+                     <i class="fas fa-users-cog w-5 mr-3 text-center"></i>
+                     <span class="sidebar-text">User Manager</span>
+                 </a>
+
+            </nav>
+        </div>
+
+        <!-- Footer: Logout -->
+        <div class="p-4 border-t border-[#1f5236] bg-[#0f2e1e]">
+             <button id="sidebarLogoutBtn" class="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-[#2d6a4f] rounded-lg text-sm text-green-100 hover:bg-[#1f5236] hover:text-white transition-colors duration-200 group" title="Sign Out">
+                <i class="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i>
+                <span class="sidebar-text">Sign Out</span>
+             </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div id="mainContent" class="flex-1 flex flex-col relative z-10 w-full h-full bg-[#f3f4f6]">
+
+        <!-- Top Bar -->
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 border-b border-gray-200 flex-shrink-0 z-20 sticky top-0 overflow-hidden">
+             <!-- Wrap ฝั่งซ้ายไว้ใน id สำหรับทำ Slide Animation หลบ Sidebar -->
+             <div id="headerLeftContent" class="flex items-center flex-shrink-0">
+                 <button id="mobileMenuButton" class="md:hidden text-gray-600 focus:outline-none mr-4 hover:bg-gray-100 p-2 rounded-md">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="flex flex-col whitespace-nowrap">
+                    <h2 class="text-xl font-bold text-gray-800" id="pageTitle">Home</h2>
+                    <span class="text-xs text-gray-400" id="currentDateDisplay">Loading Date...</span>
+                </div>
+             </div>
+             
+             <!-- Right Side Header Icons -->
+             <div class="flex items-center space-x-4 flex-shrink-0">
+                 <div class="relative cursor-pointer hover:bg-gray-50 p-2 rounded-full transition-colors" onclick="forceRefreshFeed()" title="Refresh Feed">
+                     <i class="fas fa-sync-alt text-gray-500" id="refreshIcon"></i>
+                 </div>
+                 <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200 text-sm shadow-sm">
+                     <span id="headerUserInitials">U</span>
+                 </div>
+             </div>
+        </header>
+
+        <!-- Content Area: เอา padding ออกเพื่อให้กว้าง 100% ไม่มีช่องว่าง -->
+        <main class="flex-1 flex flex-col bg-gray-50/50 relative overflow-hidden" id="contentArea">
+            
+            <!-- Welcome / Dashboard Widget Area: ย้าย padding มาไว้เฉพาะหน้านี้ -->
+            <div id="welcomeContainer" style="display: none;" class="w-full h-full flex-col overflow-y-auto p-2 md:p-6 pb-6">
+                
+                <!-- Greeting Card -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8 relative overflow-hidden flex-shrink-0">
+                    <div class="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-green-50 to-transparent opacity-50"></div>
+                    <div class="flex items-center relative z-10">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center text-white text-2xl mr-6 shadow-lg shadow-green-200">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Welcome Back!</h1>
+                            <p id="personalizedGreeting" class="text-gray-500 mt-1 text-lg"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="restrictedAccessMessage" style="display: none;" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-md animate-pulse"></div>
+
+                <!-- Shortcuts Grid -->
+                <div id="featureSection" style="display: block;">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-700 flex items-center">
+                            <i class="fas fa-bolt text-yellow-500 mr-2"></i> Quick Actions
+                        </h2>
+                        <button onclick="forceRefreshFeed()" class="text-sm text-green-600 hover:text-green-800 font-medium flex items-center bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors shadow-sm">
+                            <i class="fas fa-sync-alt mr-2"></i> Refresh Feed
+                        </button>
+                    </div>
+                    
+                    <!-- Grid Container -->
+                    <div id="quickActionsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preloaded Iframes Container: ลบ rounded-xl ออก เพื่อให้ชิดขอบ -->
+            <div id="iframeContainer" class="flex-1 relative w-full h-full hidden">
+                 <!-- Iframes จะถูก Generate และใส่เข้ามาตรงนี้ -->
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileMenuOverlay" class="fixed inset-0 bg-black/60 z-30 transition-opacity"></div>
+
+    <!-- Access Denied Modal -->
+    <div id="accessDeniedBox">
+        <button id="closeDeniedBox" class="absolute top-2 right-2 text-red-800 hover:text-red-900 focus:outline-none">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-2xl mr-3"></i>
+            <div>
+                <p class="font-bold text-lg">Access Denied</p>
+                <span id="accessDeniedMessage" class="text-sm mt-1 block opacity-90"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
+
+<script>
+    // --- Configuration ---
+    const CONFIG = {
+        scriptUrl: '<?= scriptUrl ?>',
+        defaultPic: 'https://placehold.co/40x40/EFEFEF/AAAAAA?text=U',
+        errorPic: 'https://placehold.co/40x40/FCA5A5/B91C1C?text=E',
+        currentUser: '<?= userEmail ?>' || 'User',
+        pollInterval: 20000 // 20 Seconds
+    };
+
+    // --- State Management ---
+    let state = {
+        employeeName: 'Loading...',
+        isRestricted: false,
+        lastKnownOrderId: null,
+        accessiblePages: [],
+        currentInterval: null,
+        currentPage: 'Dashboard'
+    };
+
+    // --- DOM Elements ---
+    const el = {
+        sidebarToggleBtn: document.getElementById('sidebarToggleBtn'),
+        mobileBtn: document.getElementById('mobileMenuButton'),
+        mobileOverlay: document.getElementById('mobileMenuOverlay'),
+        iframeContainer: document.getElementById('iframeContainer'),
+        pageTitle: document.getElementById('pageTitle'),
+        sidebarNav: document.getElementById('sidebarNav'),
+        sidebarLinks: document.querySelectorAll('.sidebar-link'),
+        loading: document.getElementById('loadingOverlay'),
+        welcomeContainer: document.getElementById('welcomeContainer'),
+        greeting: document.getElementById('personalizedGreeting'),
+        restrictedMsg: document.getElementById('restrictedAccessMessage'),
+        featureSection: document.getElementById('featureSection'),
+        quickActionsGrid: document.getElementById('quickActionsGrid'),
+        accessBox: document.getElementById('accessDeniedBox'),
+        accessMsg: document.getElementById('accessDeniedMessage'),
+        profilePic: document.getElementById('sidebarProfilePic'),
+        userName: document.getElementById('sidebarUserName'),
+        logoutBtn: document.getElementById('sidebarLogoutBtn'),
+        headerInitials: document.getElementById('headerUserInitials'),
+        currentDate: document.getElementById('currentDateDisplay'),
+        toastContainer: document.getElementById('toastContainer'),
+        refreshIcon: document.getElementById('refreshIcon')
+    };
+
+    // --- Page Names Mapping ---
+    const EXACT_PAGE_NAMES = {
+        'SALE': 'Sale',
+        'REPORTS': 'Reports',
+        'DASHBOARD_02': 'Dashboard_02',
+        'VOUCHERUSAGE': 'VoucherUsage',
+        'USERPROFILE': 'UserProfile',
+        'ACCOUNTING': 'Accounting',
+        'CHECKINSENIOR': 'Checkinsenior',
+        'IMPORTF1': 'ImportF1',
+        'HIGH': 'High',
+        'LOW': 'Low',
+        'WORK': 'Work',
+        'CHECKBRANCH': 'CheckBranch',
+        'ASSIGNEDTASKS': 'AssignedTasks',
+        'USERMANAGEMENT': 'UserManagement'
+    };
+
+    const QUICK_ACTIONS = {
+        'SALE': { icon: 'fa-cash-register', title: 'New Sale', desc: 'Create a new voucher order', color: 'bg-green-50 text-green-600', hover: 'hover:border-green-500' },
+        'REPORTS': { icon: 'fa-history', title: 'Sales History', desc: 'View past transactions', color: 'bg-blue-50 text-blue-600', hover: 'hover:border-blue-500' },
+        'DASHBOARD_02': { icon: 'fa-chart-pie', title: 'Analytics', desc: 'View performance stats', color: 'bg-purple-50 text-purple-600', hover: 'hover:border-purple-500' },
+        'VOUCHERUSAGE': { icon: 'fa-ticket-alt', title: 'Redeem Voucher', desc: 'Process voucher usage', color: 'bg-orange-50 text-orange-600', hover: 'hover:border-orange-500' }
+    };
+
+    // --- Preloading System Variables ---
+    const preloadedFrames = {};
+    let pagesToPreload = [];
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        setupDateDisplay();
+        setupEventListeners();
+        
+        // Load User Data & Init
+        if (isApiReady()) {
+            google.script.run.withSuccessHandler(onUserLoaded).withFailureHandler(onLoadFail).getUserProfile();
+        } else {
+            onLoadFail(); // Fallback for local testing
+        }
+    });
+
+    function setupEventListeners() {
+        el.sidebarToggleBtn?.addEventListener('click', toggleDesktopSidebar);
+        el.mobileBtn?.addEventListener('click', toggleMobileMenu);
+        el.mobileOverlay?.addEventListener('click', toggleMobileMenu);
+        
+        document.getElementById('closeDeniedBox')?.addEventListener('click', hideAccessDenied);
+        if (el.profilePic) el.profilePic.onerror = () => { el.profilePic.src = CONFIG.errorPic; };
+        el.logoutBtn?.addEventListener('click', (e) => { e.preventDefault(); handleLogout(); });
+        
+        // Nav Group Toggle
+        document.querySelectorAll('.nav-group-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const group = toggle.parentElement;
+                const items = group.querySelector('.nav-group-items');
+                const icon = toggle.querySelector('.fa-chevron-down');
+                
+                items.classList.toggle('hidden');
+                
+                if(icon) {
+                    icon.style.transform = items.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            });
+        });
+    }
+
+    function toggleDesktopSidebar() {
+        const body = document.body;
+        if (body.classList.contains('desktop-sidebar-open')) {
+            body.classList.remove('desktop-sidebar-open');
+            body.classList.add('desktop-sidebar-closed');
+        } else {
+            body.classList.remove('desktop-sidebar-closed');
+            body.classList.add('desktop-sidebar-open');
+        }
+    }
+
+    function toggleMobileMenu() {
+        const body = document.body;
+        if (body.classList.contains('mobile-sidebar-open')) {
+            body.classList.remove('mobile-sidebar-open');
+        } else {
+            body.classList.add('mobile-sidebar-open');
+        }
+    }
+
+    function onUserLoaded(response) {
+        if (response.success && response.data) {
+            state.employeeName = response.data.employeeName || CONFIG.currentUser;
+        }
+        el.userName.textContent = state.employeeName;
+        const initials = state.employeeName.substring(0,2).toUpperCase();
+        el.headerInitials.textContent = initials;
+
+        initializeApp();
+    }
+
+    function onLoadFail(err) {
+        if (handleSystemError(err)) return;
+        state.employeeName = CONFIG.currentUser;
+        el.userName.textContent = state.employeeName;
+        initializeApp(); 
+    }
+
+    function initializeApp() {
+        if (isApiReady()) {
+            google.script.run
+                .withSuccessHandler(result => {
+                    let pages = ['DASHBOARD', 'USERPROFILE'];
+                    if (result.success && result.pages) pages = result.pages;
+                    
+                    state.accessiblePages = pages;
+                    updateUIVisibility(pages);
+                    renderQuickActions(pages);
+                    attachSidebarListeners();
+                    loadHeaderProfilePicture();
+                    
+                    // Route to Initial Page
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let page = urlParams.get('page') || 'Dashboard';
+                    if (state.isRestricted || (!pages.includes(page.toUpperCase()) && page !== 'Dashboard' && page !== 'UserProfile')) {
+                        page = 'Dashboard';
+                    }
+                    window.loadPage(page);
+
+                    // เริ่มทำการแอบโหลดล่วงหน้า (Pre-loading) ทันทีที่โหลดหน้าแรกเสร็จ
+                    startBackgroundPreloading(pages);
+
+                    // Start Polling
+                    checkForNewOrders(); 
+                    state.currentInterval = setInterval(checkForNewOrders, CONFIG.pollInterval);
+
+                })
+                .withFailureHandler(err => {
+                    if (handleSystemError(err)) return;
+                    console.error(err);
+                    updateUIVisibility(['DASHBOARD']);
+                    window.loadPage('Dashboard');
+                })
+                .getAccessiblePages();
+        } else {
+            // โหมดทดสอบ Local
+            window.loadPage('Dashboard');
+        }
+    }
+
+    // --- Background Preloading Logic ---
+    function startBackgroundPreloading(accessiblePages) {
+        let uniquePages = [...new Set(accessiblePages.map(p => EXACT_PAGE_NAMES[p] || p))];
+        pagesToPreload = uniquePages.filter(p => p !== 'Dashboard' && p !== 'Welcome');
+        preloadNextFrame();
+    }
+
+    function preloadNextFrame() {
+        if (pagesToPreload.length === 0) return; 
+        const pageToLoad = pagesToPreload.shift();
+        
+        if (!preloadedFrames[pageToLoad]) {
+            createIframeForPage(pageToLoad, true);
+        } else {
+            preloadNextFrame();
+        }
+    }
+
+    function createIframeForPage(pageName, isBackgroundMode) {
+        const iframe = document.createElement('iframe');
+        iframe.id = `frame_${pageName}`;
+        // นำ border-0 ออกมาอย่างเดียว ไม่มี rounded-xl และ shadow-sm แล้ว
+        iframe.className = "w-full border-0 bg-white absolute inset-0 h-full iframe-layer";
+        iframe.allow = "geolocation *; camera *;";
+        iframe.dataset.loaded = "false";
+        
+        if (isBackgroundMode) {
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            iframe.style.zIndex = '0';
+        } else {
+            iframe.style.opacity = '1';
+            iframe.style.pointerEvents = 'auto';
+            iframe.style.zIndex = '10';
+        }
+        
+        iframe.onload = () => {
+            iframe.dataset.loaded = "true";
+            if (state.currentPage === pageName) hideLoading();
+            
+            // ถ้าแอบโหลดเป็นพื้นหลัง เมื่อโหลดเสร็จให้รีบโหลดหน้าถัดไปทันที (ปรับลดเวลาให้เร็วขึ้น)
+            if (isBackgroundMode) {
+                setTimeout(preloadNextFrame, 300);
+            }
+        };
+
+        iframe.src = `${CONFIG.scriptUrl}?page=${pageName}`;
+        el.iframeContainer.appendChild(iframe);
+        preloadedFrames[pageName] = iframe;
+        
+        return iframe;
+    }
+
+    // --- UI Logic ---
+    function setupDateDisplay() {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        el.currentDate.textContent = new Date().toLocaleDateString('en-US', options);
+    }
+
+    function showLoading() { 
+        el.loading.classList.remove('hidden'); 
+        setTimeout(() => el.loading.classList.remove('opacity-0'), 10);
+    }
+    
+    function hideLoading() { 
+        el.loading.classList.add('opacity-0');
+        setTimeout(() => el.loading.classList.add('hidden'), 300); 
+    }
+
+    function updateUIVisibility(accessiblePages) {
+        state.isRestricted = accessiblePages.length <= 2 && accessiblePages.includes('DASHBOARD');
+
+        el.sidebarLinks.forEach(link => {
+            const page = link.dataset.page?.toUpperCase();
+            if(!page) return;
+            
+            let isVisible = false;
+            if (state.isRestricted) {
+                isVisible = (page === 'DASHBOARD' && link.dataset.pageType === 'Welcome');
+            } else {
+                isVisible = accessiblePages.includes(page);
+                if (page === 'DASHBOARD' && link.dataset.pageType === 'Dashboard') {
+                    isVisible = accessiblePages.includes('SALE') || accessiblePages.includes('REPORTS') || accessiblePages.includes('DASHBOARD_02');
+                }
+            }
+            link.style.display = isVisible ? 'flex' : 'none';
+        });
+
+        document.querySelectorAll('.nav-group').forEach(group => {
+            const visibleChildren = Array.from(group.querySelectorAll('.sidebar-link'))
+                .filter(l => l.style.display !== 'none');
+            group.style.display = visibleChildren.length > 0 ? 'block' : 'none';
+        });
+
+        if (state.isRestricted) {
+            el.restrictedMsg.innerHTML = `<p class="font-bold">Restricted Access</p><p class="text-sm mt-1">Hello ${state.employeeName}, your account is pending activation. Please contact the administrator.</p>`;
+            el.restrictedMsg.style.display = 'block';
+            el.featureSection.style.display = 'none';
+            el.greeting.parentElement.style.display = 'none';
+        } else {
+            el.restrictedMsg.style.display = 'none';
+            el.featureSection.style.display = 'block';
+            el.greeting.parentElement.style.display = 'block';
+            el.greeting.innerHTML = `Signed in as <strong class="text-green-700">${state.employeeName}</strong>`;
+        }
+    }
+
+    function renderQuickActions(pages) {
+        el.quickActionsGrid.innerHTML = '';
+        pages.forEach(page => {
+            const config = QUICK_ACTIONS[page];
+            if (config) {
+                const card = document.createElement('div');
+                card.className = `shortcut-card bg-white p-6 rounded-xl border border-gray-100 flex items-center cursor-pointer ${config.hover}`;
+                
+                let targetPage = EXACT_PAGE_NAMES[page] || page;
+                card.onclick = () => window.loadPage(targetPage);
+
+                card.innerHTML = `
+                    <div class="w-14 h-14 rounded-full ${config.color} flex items-center justify-center text-xl shadow-sm mr-4 flex-shrink-0">
+                        <i class="fas ${config.icon}"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">${config.title}</h3>
+                        <p class="text-gray-500 text-xs mt-0.5">${config.desc}</p>
+                    </div>
+                    <div class="ml-auto text-gray-300">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                `;
+                el.quickActionsGrid.appendChild(card);
+            }
+        });
+    }
+
+    // --- Navigation Logic ---
+    window.loadPage = function(pageName) {
+        if (!pageName) pageName = 'Dashboard';
+        const targetPage = EXACT_PAGE_NAMES[pageName.toUpperCase()] || pageName;
+        state.currentPage = targetPage;
+        
+        loadHeaderProfilePicture();
+
+        // Active State in Sidebar
+        el.sidebarLinks.forEach(link => link.classList.remove('active'));
+        const activeLink = document.querySelector(`.sidebar-link[data-page="${pageName}"]`);
+        let title = pageName;
+        if(activeLink) {
+            activeLink.classList.add('active');
+            title = activeLink.querySelector('.sidebar-text').textContent;
+            const group = activeLink.closest('.nav-group');
+            if(group) {
+                group.querySelector('.nav-group-items').classList.remove('hidden');
+                const icon = group.querySelector('.fa-chevron-down');
+                if(icon) icon.style.transform = 'rotate(180deg)';
+            }
+        }
+        if(QUICK_ACTIONS[pageName.toUpperCase()]) title = QUICK_ACTIONS[pageName.toUpperCase()].title;
+        el.pageTitle.textContent = title;
+
+        // Logic Switcher
+        if (targetPage === 'Dashboard') {
+            el.welcomeContainer.style.display = 'flex';
+            el.iframeContainer.style.display = 'none';
+            el.pageTitle.textContent = 'Home';
+            hideLoading();
+        } else {
+            // Check Access First
+            if (state.isRestricted && targetPage !== 'UserProfile') {
+                showAccessDenied('You do not have permission to access this page.');
+                window.loadPage('Dashboard');
+                return;
+            }
+
+            el.welcomeContainer.style.display = 'none';
+            el.iframeContainer.style.display = 'block';
+
+            // เอา iframes ทั้งหมดไปซ่อนไว้ข้างหลังก่อน
+            Object.values(preloadedFrames).forEach(frame => {
+                frame.style.opacity = '0';
+                frame.style.pointerEvents = 'none';
+                frame.style.zIndex = '0';
+            });
+
+            if (!preloadedFrames[targetPage]) {
+                showLoading();
+                createIframeForPage(targetPage, false);
+                pagesToPreload = pagesToPreload.filter(p => p !== targetPage);
+            } else {
+                const activeFrame = preloadedFrames[targetPage];
+                activeFrame.style.opacity = '1';
+                activeFrame.style.pointerEvents = 'auto';
+                activeFrame.style.zIndex = '10';
+
+                // เช็คว่าโหลดเสร็จแล้วจริงๆ หรือกำลังโหลดอยู่
+                if (activeFrame.dataset.loaded === "true") {
+                    hideLoading();
+                } else {
+                    showLoading();
+                }
+            }
+        }
+
+        // Mobile Close Action
+        if (window.innerWidth < 768) {
+            document.body.classList.remove('mobile-sidebar-open');
+        }
+    };
+
+    function attachSidebarListeners() {
+        el.sidebarLinks.forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                const page = link.dataset.page;
+                const type = link.dataset.pageType;
+                
+                if (page === 'Dashboard' && type === 'Welcome') window.loadPage('Dashboard');
+                else window.loadPage(page);
+            };
+        });
+    }
+
+    // --- Profile & Logout ---
+    window.updateProfilePictureInHeader = function(url) {
+        if(el.profilePic) el.profilePic.src = addCacheBuster(url);
+    }
+
+    function loadHeaderProfilePicture() {
+        if (!isApiReady()) return;
+        google.script.run
+            .withSuccessHandler(res => {
+                if(res.success && res.profilePicURL) updateProfilePictureInHeader(res.profilePicURL);
+            })
+            .withFailureHandler(err => handleSystemError(err))
+            .getProfilePicForHeader();
+    }
+
+    function handleLogout() {
+        showLoading();
+        google.script.run
+            .withSuccessHandler(res => {
+                 if(res && res.success) window.top.location.href = res.redirectUrl;
+                 else if(res && res.message) showAccessDenied(res.message);
+                 else window.top.location.reload();
+            })
+            .withFailureHandler(err => {
+                 // ถ้าเซิร์ฟเวอร์ปฏิเสธการเชื่อมต่อ ให้บังคับรีเฟรชหน้าต่างเพื่อเด้งไปหน้า Login ทันที
+                 window.top.location.reload();
+            })
+            .doLogout();
+    }
+
+    // --- Notifications & Real-time ---
+    function showToast(title, message, type = 'info') {
+        const toast = document.createElement('div');
+        
+        let colors = {
+            success: 'border-l-4 border-green-500 bg-white text-gray-800',
+            error: 'border-l-4 border-red-500 bg-white text-gray-800',
+            info: 'border-l-4 border-blue-500 bg-white text-gray-800'
+        }[type];
+        
+        let icon = {
+            success: 'fa-check-circle text-green-500',
+            error: 'fa-exclamation-circle text-red-500',
+            info: 'fa-info-circle text-blue-500'
+        }[type];
+
+        toast.className = `toast-item w-80 md:w-96 p-4 rounded-r shadow-lg flex items-start ${colors}`;
+        toast.innerHTML = `
+            <div class="flex-shrink-0 mt-0.5"><i class="fas ${icon} text-lg"></i></div>
+            <div class="ml-3 flex-1">
+                <h3 class="text-sm font-bold">${title}</h3>
+                <p class="text-xs mt-1 text-gray-600 leading-relaxed">${message}</p>
+            </div>
+            <button class="ml-2 text-gray-400 hover:text-gray-600" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        el.toastContainer.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400); 
+        }, 5000);
+    }
+
+    function checkForNewOrders() {
+        if (!isApiReady()) return;
+        google.script.run
+            .withSuccessHandler(data => {
+                if (!data) return;
+                if (state.lastKnownOrderId === null) { state.lastKnownOrderId = data.orderId; return; }
+                if (data.orderId !== state.lastKnownOrderId) {
+                    showToast('New Voucher Order!', `Order ID: ${data.orderId} has been received.`, 'success');
+                    state.lastKnownOrderId = data.orderId;
+                }
+            })
+            .withFailureHandler(err => handleSystemError(err))
+            .getLatestOrderId();
+    }
+
+    window.forceRefreshFeed = function() {
+        el.refreshIcon.classList.add('spin-slow');
+        checkForNewOrders();
+        
+        if (state.currentPage !== 'Dashboard' && preloadedFrames[state.currentPage]) {
+            showLoading();
+            preloadedFrames[state.currentPage].dataset.loaded = "false";
+            preloadedFrames[state.currentPage].contentWindow.location.reload();
+        }
+
+        setTimeout(() => {
+            el.refreshIcon.classList.remove('spin-slow');
+            showToast('Feed Refreshed', 'Latest data has been loaded.', 'info');
+        }, 1000);
+    };
+
+    function isApiReady() { return typeof google !== 'undefined' && google.script && google.script.run; }
+    function addCacheBuster(url) { return url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`; }
+    function showAccessDenied(msg) {
+        el.accessMsg.textContent = msg;
+        el.accessBox.style.display = 'block';
+        setTimeout(hideAccessDenied, 5000);
+    }
+    function hideAccessDenied() { el.accessBox.style.display = 'none'; }
+
+    // --- System Error & Session Expire Handler ---
+    function handleSystemError(err) {
+        if (!err) return false;
+        const errorText = typeof err === 'string' ? err : (err.message || String(err));
+        
+        // ตรวจจับข้อความว่ามีคำเกี่ยวกับการที่ Session หมดอายุหรือไม่
+        if (errorText.includes('Session หมดอายุ') || errorText.includes('ล็อกอิน') || errorText.includes('หมดอายุ')) {
+            showToast('Session Expired', 'เซสชันหมดอายุ กำลังออกจากระบบอัตโนมัติ...', 'error');
+            setTimeout(() => {
+                handleLogout();
+            }, 1000);
+            return true; 
+        }
+        return false;
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assigned Tasks Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        div:where(.swal2-container) { font-family: 'Prompt', sans-serif !important; }
+        .font-prompt { font-family: 'Prompt', sans-serif !important; }
+        
+        .table-row-hover:hover td { background-color: #f8fafc; cursor: pointer; }
+        
+        /* Custom Scrollbar */
+        .modal-scroll::-webkit-scrollbar { width: 6px; }
+        .modal-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .modal-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .modal-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .timeline-item::before {
+            content: ''; position: absolute; left: -21px; top: 6px; width: 10px; height: 10px;
+            border-radius: 50%; background-color: #6366f1; border: 2px solid white; box-shadow: 0 0 0 2px #e0e7ff;
+        }
+
+        /* Progress Bar Animation */
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+
+        /* Date Toggles */
+        .date-toggle-btn { background-color: white; color: #64748b; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
+        .date-toggle-btn:hover { background-color: #f8fafc; color: #334155; }
+        .date-toggle-btn.active { background-color: #1e293b; color: white; border-color: #1e293b; }
+        
+        /* Status Tab Buttons */
+        .status-tab-btn { color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s ease; padding-bottom: 0.75rem; font-weight: 500; }
+        .status-tab-btn:hover { color: #4f46e5; border-bottom-color: #c7d2fe; }
+        .status-tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; font-weight: 700; }
+
+        /* Sortable Table Header */
+        .sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+        .sortable:hover { background-color: #f1f5f9; }
+        .sort-icon { display: inline-block; margin-left: 0.35rem; font-size: 0.75rem; color: #cbd5e1; transition: color 0.2s; }
+        .sortable.asc .sort-icon::before { content: "\f0de"; font-family: "Font Awesome 6 Free"; font-weight: 900; color: #4f46e5; }
+        .sortable.desc .sort-icon::before { content: "\f0dd"; font-family: "Font Awesome 6 Free"; font-weight: 900; color: #4f46e5; }
+        .sortable:hover .sort-icon { color: #94a3b8; }
+
+        /* My Tasks Button */
+        .my-task-btn { background-color: white; color: #6366f1; border: 1px solid #e0e7ff; transition: all 0.2s ease; }
+        .my-task-btn:hover { background-color: #eef2ff; }
+        .my-task-btn.active { background-color: #6366f1; color: white; border-color: #6366f1; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2); }
+
+        /* Workflow Sidebar Buttons */
+        .wf-step-btn { text-align: left; padding: 1rem; border-radius: 0.75rem; border: 1px solid transparent; transition: all 0.2s; position: relative; }
+        .wf-step-btn:hover:not(.active) { background-color: #f8fafc; border-color: #e2e8f0; }
+        .wf-step-btn.active { background-color: #eef2ff; border-color: #c7d2fe; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .wf-step-btn.active::before { content: ''; position: absolute; left: -1px; top: 10%; height: 80%; width: 4px; background-color: #4f46e5; border-radius: 0 4px 4px 0; }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-8 text-slate-700">
+
+    <div class="max-w-[1600px] mx-auto space-y-6">
+
+        <!-- Header Dashboard Section -->
+        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 md:px-8 md:py-6 rounded-2xl shadow-sm border border-slate-100/80">
+            <div class="flex items-center gap-5">
+                <div class="h-14 w-14 rounded-full bg-slate-900 text-white flex items-center justify-center text-2xl shadow-md">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight uppercase">Assigned Tasks Dashboard</h1>
+                    <p class="text-sm text-indigo-500 font-medium flex items-center gap-2 mt-1">
+                        <span id="user-info-display">กำลังโหลดข้อมูล...</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 w-full xl:w-auto">
+                <div class="border-l-[3px] border-slate-700 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-wider">Total Tasks</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl md:text-3xl font-bold text-slate-800 leading-none" id="stat-total">0</span>
+                        <span class="text-[10px] text-slate-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div class="border-l-[3px] border-amber-400 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-amber-500 font-bold mb-1 uppercase tracking-wider">รอดำเนินการ</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl md:text-3xl font-bold text-amber-600 leading-none" id="stat-pending">0</span>
+                        <span class="text-[10px] text-amber-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div class="border-l-[3px] border-sky-400 bg-white border border-slate-100 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-sky-500 font-bold mb-1 uppercase tracking-wider">กำลังดำเนินการ</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl md:text-3xl font-bold text-sky-600 leading-none" id="stat-progress">0</span>
+                        <span class="text-[10px] text-sky-400 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+                <div class="border-l-[3px] border-emerald-500 bg-emerald-50/40 border border-emerald-100/50 shadow-sm rounded-r-xl px-5 py-3">
+                    <p class="text-[10px] text-emerald-600 font-bold mb-1 uppercase tracking-wider">เสร็จสิ้น</p>
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-2xl md:text-3xl font-bold text-emerald-600 leading-none" id="stat-completed">0</span>
+                        <span class="text-[10px] text-emerald-500 mb-1 font-medium">รายการ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLA Stats Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100/80 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="h-10 w-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-regular fa-clock"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">SLA In due</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 leading-none" id="stat-indue">0</h3>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-slate-50 text-slate-500 px-2 py-0.5 rounded font-medium">ในกำหนด</span>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100/80 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="h-10 w-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">SLA Overdue</p>
+                        <h3 class="text-2xl font-bold text-rose-600 leading-none" id="stat-overdue">0</h3>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded font-medium border border-rose-100">เกินกำหนด</span>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100/80 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-lg"><i class="fa-solid fa-percent"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">% Overdue</p>
+                        <h3 class="text-2xl font-bold text-slate-700 leading-none" id="stat-overdue-percent">0%</h3>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-slate-50 text-slate-500 px-2 py-0.5 rounded font-medium">ภาพรวม</span>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/80 space-y-4">
+            <div class="flex flex-col xl:flex-row gap-4 items-center justify-between">
+                
+                <!-- Search, My Tasks & Dropdowns -->
+                <div class="flex flex-col md:flex-row gap-3 w-full xl:flex-1">
+                    
+                    <div class="relative w-full md:flex-1 shrink-0">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                        <input type="text" id="searchInput" class="bg-slate-50 border border-slate-200 text-slate-700 text-[13px] rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-11 p-2.5 transition-colors placeholder-slate-400" placeholder="ค้นหา Task No, สาขา, ปัญหา...">
+                    </div>
+                    
+                    <button id="btn-my-tasks" class="my-task-btn px-4 py-2.5 text-[13px] font-semibold rounded-xl flex items-center gap-2 w-full md:w-auto justify-center shrink-0">
+                        <i class="fa-solid fa-user-check"></i> My Tasks
+                    </button>
+
+                    <div class="relative w-full md:w-48 shrink-0">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-user-tag"></i>
+                        </div>
+                        <select id="filter-emp" class="bg-slate-50 border border-slate-200 text-slate-700 text-[12px] rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-9 pr-6 py-2.5 appearance-none transition-colors truncate">
+                            <option value="ALL">All Zones...</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </div>
+                    </div>
+
+                    <select id="workGroupFilter" class="bg-slate-50 border border-slate-200 text-slate-700 text-[13px] rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full md:w-40 p-2.5 appearance-none shrink-0">
+                        <option value="ALL">ทุกประเภทงาน</option>
+                        <option value="งานโครงสร้าง">งานโครงสร้าง</option>
+                        <option value="งานเครื่องเย็น">งานเครื่องเย็น</option>
+                    </select>
+                </div>
+
+                <!-- Date Toggles -->
+                <div class="flex rounded-xl shadow-sm w-full sm:w-auto shrink-0" role="group">
+                    <button type="button" id="btn-date-all" class="date-toggle-btn active px-4 py-2.5 text-[13px] font-medium rounded-l-xl border-r-0">All</button>
+                    <button type="button" id="btn-date-day" class="date-toggle-btn px-4 py-2.5 text-[13px] font-medium border-r-0">Day</button>
+                    <button type="button" id="btn-date-range" class="date-toggle-btn px-4 py-2.5 text-[13px] font-medium rounded-r-xl">Range</button>
+                </div>
+            </div>
+
+            <!-- Date Pickers (Hidden) -->
+            <div id="date-picker-container" class="hidden pt-4 border-t border-slate-100 flex-wrap gap-4 items-center justify-end">
+                <div id="single-date-wrap" class="hidden flex items-center gap-3">
+                    <span class="text-sm text-slate-500 font-medium">เลือกวันที่:</span>
+                    <input type="date" id="input-date-single" class="bg-white border border-slate-200 text-[13px] rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700">
+                </div>
+                <div id="range-date-wrap" class="hidden flex items-center gap-3">
+                    <span class="text-sm text-slate-500 font-medium">ตั้งแต่:</span>
+                    <input type="date" id="input-date-start" class="bg-white border border-slate-200 text-[13px] rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700">
+                    <span class="text-sm text-slate-500 font-medium">ถึง:</span>
+                    <input type="date" id="input-date-end" class="bg-white border border-slate-200 text-[13px] rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700">
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Section with Tabs -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden flex flex-col">
+            <!-- Status Tabs -->
+            <div class="flex px-6 pt-4 gap-6 border-b border-slate-200 overflow-x-auto no-scrollbar bg-slate-50/50">
+                <button class="status-tab-btn active whitespace-nowrap" data-status="ALL">หน้าหลัก (ทั้งหมด)</button>
+                <button class="status-tab-btn whitespace-nowrap" data-status="รอดำเนินการ">รอดำเนินการ <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs ml-1 font-bold" id="tab-count-pending">0</span></button>
+                <button class="status-tab-btn whitespace-nowrap" data-status="ดำเนินการ">กำลังดำเนินการ <span class="bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full text-xs ml-1 font-bold" id="tab-count-progress">0</span></button>
+                <button class="status-tab-btn whitespace-nowrap" data-status="เสร็จสิ้น">เสร็จสิ้น <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs ml-1 font-bold" id="tab-count-completed">0</span></button>
+                <button class="status-tab-btn whitespace-nowrap" data-status="_79_ขอยืดเวลาSLA">ขอขยายเวลา SLA <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs ml-1 font-bold" id="tab-count-sla">0</span></button>
+                <button class="status-tab-btn whitespace-nowrap" data-status="ยกเลิก">ยกเลิก <span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-1 font-bold" id="tab-count-cancelled">0</span></button>
+            </div>
+
+            <div class="overflow-x-auto w-full relative min-h-[300px]">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4 sortable" data-sort="taskNo">
+                                Task No. / วันที่แจ้ง <span class="sort-icon"><i class="fa-solid fa-sort"></i></span>
+                            </th>
+                            <th class="px-6 py-4 sortable" data-sort="branchName">
+                                สาขา / ผู้รับผิดชอบ <span class="sort-icon"><i class="fa-solid fa-sort"></i></span>
+                            </th>
+                            <th class="px-6 py-4">กลุ่มงาน / ปัญหา</th>
+                            <th class="px-6 py-4 text-center sortable" data-sort="statusGroup">
+                                กลุ่มสถานะ <span class="sort-icon"><i class="fa-solid fa-sort"></i></span>
+                            </th>
+                            <th class="px-6 py-4">สถานะ (Detail) / SLA</th>
+                            <th class="px-6 py-4 min-w-[150px] sortable" data-sort="percent">
+                                ความคืบหน้า <span class="sort-icon"><i class="fa-solid fa-sort"></i></span>
+                            </th>
+                            <th class="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body" class="divide-y divide-slate-50">
+                        <tr><td colspan="7" class="px-6 py-16 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-slate-300"></i><br>กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="bg-white px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+                <div id="page-info">Showing 0 to 0 of 0 entries</div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-prev" class="h-8 w-8 rounded-lg flex items-center justify-center border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    </button>
+                    <div id="page-numbers" class="flex gap-1 text-[13px] font-medium">
+                        <!-- Rendered via JS -->
+                    </div>
+                    <button id="btn-next" class="h-8 w-8 rounded-lg flex items-center justify-center border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL (Popup จัดการงาน UI ใหม่แบบ Sidebar) -->
+    <div id="action-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm overflow-y-auto font-prompt" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-6xl w-full border border-slate-200 flex flex-col h-[90vh]">
+                
+                <!-- Modal Header -->
+                <div class="bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-indigo-100 text-indigo-600 p-3 rounded-xl shadow-sm"><i class="fa-solid fa-clipboard-list text-xl"></i></div>
+                        <div>
+                            <h3 class="text-[20px] font-bold text-slate-800 tracking-wide" id="modal-task-no">Task: -</h3>
+                            <p class="text-[13px] text-slate-500 font-medium flex items-center gap-2" id="modal-branch-group">
+                                <span id="modal-branch" class="text-indigo-600 font-bold">-</span>
+                                <span class="text-slate-300">|</span>
+                                <span id="modal-group" class="bg-slate-100 px-2 py-0.5 rounded text-[11px]">-</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- SLA Override Button -->
+                        <button onclick="switchTab('sla_override')" class="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 px-4 py-2 rounded-xl text-[12px] font-bold transition-colors">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i> ยืด/จัดการ SLA (_79_)
+                        </button>
+                        <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-rose-500 transition-colors bg-slate-50 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 rounded-full h-10 w-10 flex items-center justify-center shadow-sm">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body (3 Columns Layout) -->
+                <div class="flex flex-col lg:flex-row grow overflow-hidden bg-slate-50/50">
+                    
+                    <!-- COLUMN 1: Sidebar Menu (ขั้นตอน) -->
+                    <div class="w-full lg:w-[280px] p-5 overflow-y-auto modal-scroll border-r border-slate-100 bg-white shrink-0">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">ขั้นตอนการทำงาน</p>
+                        <div class="space-y-2 flex flex-col" id="modal-sidebar-menu">
+                            <!-- Sidebar buttons injected via JS -->
+                        </div>
+
+                        <div class="mt-8 pt-4 border-t border-slate-100">
+                            <!-- เพิ่ม Dropdown ตัวเลือกอื่นๆ สำหรับการข้ามสถานะ/จ่ายงาน/ยกเลิก ตรงนี้ -->
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">ตัวเลือกอื่นๆ</p>
+                            <select id="other-action-select" class="w-full border border-slate-200 rounded-xl p-3 text-[13px] bg-white outline-none focus:border-slate-400 shadow-sm" onchange="renderOtherActionForm()">
+                                <option value="">-- เลือกเพื่อเปลี่ยนสถานะฉุกเฉิน --</option>
+                                <option value="ASSIGN">🟢 จ่ายงานให้ผู้รับเหมา (Assign)</option>
+                                <option value="_00_รอจ่ายงาน">ย้อนกลับ: เริ่มต้นใหม่ (รอจ่ายงาน)</option>
+                                <option value="_20_รอพิจารณาการทำงาน">ย้อนกลับ: รอพิจารณาการทำงาน</option>
+                                <option value="_75_รอตรวจรับงาน">ข้ามไป: ส่งตรวจรับงานทันที</option>
+                                <option value="งานยกเลิก">❌ ยกเลิกงาน (Cancel Task)</option>
+                            </select>
+                            <div id="other-action-form" class="mt-3 hidden bg-slate-50 border border-slate-200 p-3 rounded-xl"></div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 2: Workspace (ฟอร์มการทำงาน) -->
+                    <div class="w-full lg:flex-1 p-6 lg:p-8 overflow-y-auto modal-scroll relative bg-slate-50/30">
+                        <!-- Overlay Loading during Save -->
+                        <div id="modal-loading-overlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                            <div class="w-full max-w-sm text-center bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+                                <i class="fa-solid fa-cloud-arrow-up text-5xl text-indigo-500 mb-6 animate-bounce"></i>
+                                <h4 class="text-lg font-bold text-slate-800 mb-2">กำลังบันทึกข้อมูล...</h4>
+                                <p class="text-[13px] text-slate-500 mb-6" id="modal-save-text">กำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่</p>
+                                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                    <div id="modal-save-progress" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="action-workspace-content" class="max-w-2xl mx-auto pb-10">
+                            <!-- Dynamic Content injected here -->
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 3: Task Info & History -->
+                    <div class="w-full lg:w-[320px] p-5 overflow-y-auto modal-scroll border-l border-slate-100 bg-white shrink-0 relative flex flex-col">
+                        
+                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-4 shrink-0">
+                            <div class="flex justify-between items-start mb-2">
+                                <p class="text-[10px] text-indigo-500 font-bold tracking-wide uppercase">สถานะปัจจุบัน</p>
+                                <div id="modal-sla-badge"></div>
+                            </div>
+                            <div id="modal-status-badge"></div>
+                            <div class="mt-3 w-full bg-indigo-100 rounded-full h-1.5" id="modal-progress-wrap">
+                                <div class="bg-indigo-600 h-1.5 rounded-full progress-bar-fill" id="modal-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4 shrink-0 relative">
+                            <p class="text-[10px] text-slate-400 font-bold mb-1.5 tracking-wide uppercase">ปัญหาแจ้งซ่อม</p>
+                            <p class="text-[13px] font-medium text-slate-700 leading-relaxed mb-3 line-clamp-3" id="modal-issue">-</p>
+                            <button onclick="showFullDetailsPopup()" class="w-full bg-white border border-slate-200 text-indigo-600 font-bold text-[11px] py-2 rounded-lg hover:bg-indigo-50 transition-colors">
+                                <i class="fa-regular fa-file-lines mr-1"></i> ดูรายละเอียดงานทั้งหมด
+                            </button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto no-scrollbar">
+                            <p class="text-[12px] font-bold text-slate-500 mb-4 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติการทำงาน</p>
+                            <div class="relative border-l-2 border-slate-200 ml-2 space-y-5 pb-4" id="modal-timeline">
+                                <!-- Timeline injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allTasks = [];
+        let filteredTasks = [];
+        let currentUser = "";
+        let currentEmpName = "";
+        let currentEmpId = "";
+        
+        let currentModalTask = null;
+        let dateMode = 'all';
+        let isMyTasksOnly = false;
+        let currentStatusTab = 'ALL';
+        let currentWfTab = ''; 
+        
+        // ตัวแปรสำหรับระบบ Edit Mode
+        let isEditMode = false;
+        let currentEditReason = "";
+        
+        // Sorting & Pagination Variables
+        let sortCol = '';
+        let sortAsc = true;
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        // Caching vendors
+        let structVendors = [];
+        let coolingVendorsCache = {}; 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            
+            // Event Listeners for Filters
+            document.getElementById('searchInput').addEventListener('input', applyFilter);
+            document.getElementById('workGroupFilter').addEventListener('change', applyFilter);
+            document.getElementById('filter-emp').addEventListener('change', () => {
+                if(document.getElementById('filter-emp').value !== "ALL") {
+                    isMyTasksOnly = false;
+                    document.getElementById('btn-my-tasks').classList.remove('active');
+                }
+                applyFilter();
+            });
+
+            document.getElementById('btn-my-tasks').addEventListener('click', () => {
+                isMyTasksOnly = !isMyTasksOnly;
+                const btn = document.getElementById('btn-my-tasks');
+                const empSelect = document.getElementById('filter-emp');
+                
+                if(isMyTasksOnly) {
+                    btn.classList.add('active');
+                    empSelect.value = "ALL"; 
+                } else {
+                    btn.classList.remove('active');
+                }
+                applyFilter();
+            });
+
+            // Date Filters
+            document.getElementById('btn-date-all').addEventListener('click', () => setDateMode('all'));
+            document.getElementById('btn-date-day').addEventListener('click', () => setDateMode('day'));
+            document.getElementById('btn-date-range').addEventListener('click', () => setDateMode('range'));
+            document.getElementById('input-date-single').addEventListener('change', applyFilter);
+            document.getElementById('input-date-start').addEventListener('change', applyFilter);
+            document.getElementById('input-date-end').addEventListener('change', applyFilter);
+
+            // Tab Listeners
+            document.querySelectorAll('.status-tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.status-tab-btn').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    currentStatusTab = e.currentTarget.dataset.status;
+                    applyFilter();
+                });
+            });
+
+            // Sorting Listeners
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const newSortCol = th.dataset.sort;
+                    if (sortCol === newSortCol) {
+                        sortAsc = !sortAsc;
+                    } else {
+                        sortCol = newSortCol;
+                        sortAsc = true;
+                    }
+                    
+                    document.querySelectorAll('th.sortable').forEach(el => {
+                        el.classList.remove('asc', 'desc');
+                        el.querySelector('.sort-icon').innerHTML = '<i class="fa-solid fa-sort"></i>';
+                    });
+                    
+                    if(sortAsc) {
+                        th.classList.add('asc');
+                        th.querySelector('.sort-icon').innerHTML = '<i class="fa-solid fa-sort-up"></i>';
+                    } else {
+                        th.classList.add('desc');
+                        th.querySelector('.sort-icon').innerHTML = '<i class="fa-solid fa-sort-down"></i>';
+                    }
+                    applyFilter();
+                });
+            });
+
+            // Pagination Button Listeners
+            document.getElementById('btn-prev').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+
+            document.getElementById('btn-next').addEventListener('click', () => {
+                const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            });
+        });
+
+        // ==========================================
+        // 1. DATA PROCESSING LOGIC
+        // ==========================================
+        
+        // --- ระบบแปลงวันที่ภาษาไทย สำหรับคำนวณ SLA ให้เสถียรขึ้น ---
+        function parseThaiDate(dateStr) {
+            if(!dateStr || dateStr === '-') return null;
+            
+            // ตัดเอาเฉพาะส่วนของวันที่ (ทิ้งเวลา)
+            let dStr = String(dateStr).trim().split(' ')[0]; 
+            
+            let parts;
+            if(dStr.includes('/')) parts = dStr.split('/');
+            else if(dStr.includes('-')) parts = dStr.split('-');
+            else {
+                let fallback = new Date(dateStr);
+                return isNaN(fallback.getTime()) ? null : fallback;
+            }
+
+            if(parts.length === 3) {
+                let d = parseInt(parts[0], 10);
+                let m = parseInt(parts[1], 10) - 1; // เดือนเริ่มที่ 0
+                let y = parseInt(parts[2], 10);
+                
+                if(y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+                
+                // สลับตำแหน่งถ้ารูปแบบเป็น YYYY-MM-DD
+                if(parts[0].length === 4) {
+                    y = parseInt(parts[0], 10);
+                    m = parseInt(parts[1], 10) - 1;
+                    d = parseInt(parts[2], 10);
+                    if(y > 2500) y -= 543;
+                }
+                
+                let parsedDate = new Date(y, m, d);
+                return isNaN(parsedDate.getTime()) ? null : parsedDate;
+            }
+            return null;
+        }
+
+        // --- คำนวณสถานะ SLA ---
+        function calculateSLA(task) {
+            if(task.wfStatus === "งานยกเลิก") return { status: "Canceled", text: "ยกเลิก", color: "bg-slate-100 text-slate-500 border-slate-200" };
+
+            let dueDateObj = parseThaiDate(task.dueDate);
+            
+            // เช็คว่ามีการขยายเวลาไหม (ใช้ extendedDueDate ถ้ามี)
+            let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+            if (datesObj.extendedDueDate) {
+                dueDateObj = parseThaiDate(datesObj.extendedDueDate);
+            }
+
+            if (!dueDateObj) return { status: "No Due Date", text: "ไม่ระบุ", color: "bg-slate-100 text-slate-400 border-slate-200" };
+
+            let compareDateObj = new Date(); // เทียบกับวันนี้โดย Default
+            
+            // แต่ถ้างานเสร็จแล้ว ให้เทียบกับวันที่ทำเสร็จ
+            if (task.wfStatus === "งานเสร็จแล้ว" && datesObj.completeDate) {
+                let compDate = parseThaiDate(datesObj.completeDate);
+                if(compDate) compareDateObj = compDate;
+            }
+
+            // เซ็ตเวลาให้เป็น 00:00:00 เพื่อเทียบแค่วันที่
+            dueDateObj.setHours(0,0,0,0);
+            compareDateObj.setHours(0,0,0,0);
+
+            if (compareDateObj > dueDateObj) {
+                return { status: "Overdue", text: "Overdue", color: "bg-rose-50 text-rose-600 border-rose-200" };
+            } else {
+                return { status: "Indue", text: "In due", color: "bg-emerald-50 text-emerald-600 border-emerald-200" };
+            }
+        }
+
+        function getStatusGroup(status) {
+            if (!status) return "รอดำเนินการ";
+            if (status === "งานเสร็จแล้ว") return "เสร็จสิ้น";
+            if (status === "งานยกเลิก") return "ยกเลิก";
+            if (status === "_79_ขอยืดเวลาSLA") return "ขอขยายเวลา"; // เพิ่มเช็ค SLA
+            if (status.startsWith("_0") || status.startsWith("_2") || status.startsWith("_3") || status.startsWith("_4")) return "รอดำเนินการ";
+            if (status.startsWith("_5") || status.startsWith("_6") || status.startsWith("_7")) return "ดำเนินการ";
+            return "รอดำเนินการ";
+        }
+
+        function getProgressPercent(status) {
+            if (!status || status === "งานยกเลิก") return 0;
+            if (status === "งานเสร็จแล้ว") return 100;
+            if (status.startsWith("_00")) return 10;
+            if (status.startsWith("_20")) return 20;
+            if (status.startsWith("_21")) return 25;
+            if (status.startsWith("_3")) return 30;
+            if (status.startsWith("_4")) return 40;
+            if (status.startsWith("_5")) return 50;
+            if (status.startsWith("_6")) return 60;
+            if (status === "_75_รอตรวจรับงาน") return 90;
+            if (status.startsWith("_7")) return 70;
+            return 50;
+        }
+
+        function getProgressBarColor(percent) {
+            if (percent === 0) return 'bg-rose-500';
+            if (percent <= 30) return 'bg-slate-400';
+            if (percent <= 60) return 'bg-amber-500';
+            if (percent <= 90) return 'bg-indigo-500';
+            return 'bg-emerald-500';
+        }
+
+        // ==========================================
+        // เปิด Modal ด้วย ID ป้องกัน JSON Parse Error
+        // ==========================================
+        window.openModalByRowId = function(rowId) {
+            const task = allTasks.find(t => t.rowId === rowId);
+            if (task) {
+                openModal(task);
+            }
+        };
+
+        // ==========================================
+        // 2. DATA LOADING & TABLE RENDER
+        // ==========================================
+        function loadData(isSilentRefresh = false) {
+            if (typeof google === 'undefined') {
+                // Mock Data for Testing
+                currentUser = "12345 - ผู้ทดสอบ ระบบ";
+                currentEmpName = "ผู้ทดสอบ";
+                currentEmpId = "12345";
+                document.getElementById('user-info-display').innerHTML = `<i class="fa-solid fa-user-circle"></i> ผู้ใช้งาน: ${currentUser}`;
+                
+                if (allTasks.length === 0) {
+                    allTasks = [
+                        { rowId: 2, taskNo: "IN2026-108170", branchName: "1419-หนองไผ่กลางดอน", branchCode: "1419", workGroup: "งานโครงสร้าง", issue: "กดหลอดไม่ออก", detail: "กระเบื้องหน้าห้องน้ำแตก \nบรรทัดที่สอง", wfStatus: "_00_รอจ่ายงาน", wfLog: "[]", wfDates: "{}", assignZone: "12345 - ผู้ทดสอบ ระบบ", reportDate: "02/03/2026", dueDate: "05/03/2026", createTime: "10:30:00", phone: "081-1234567", createBy: "Admin", wfVendor: "", wfVendorType: "" },
+                        { rowId: 3, taskNo: "IN2026-123446", branchName: "1914-ตลาดนัดกองทราย(ป่าแดง)", branchCode: "1914", workGroup: "งานเครื่องเย็น", issue: "แอร์ไม่เย็น", detail: "แอร์มีน้ำหยด", wfStatus: "_50_ส่งเปิดPOก่อนเข้างาน", wfLog: "[]", wfDates: '{"entryDate":"2026-03-05"}', assignZone: "99999 - สมชาย ใจดี", reportDate: "02/03/2026", dueDate: "04/03/2026", createTime: "14:15:22", phone: "081-9999999", createBy: "User1", wfVendor: "PM: บจก. แอร์เย็นดี", wfVendorType: "_31_จ่ายซัพT1รอเสนอราคา", wfCost: '{"mat":1000,"labor":500,"travel":300,"total":1800}', wfPO: "PO-456789" },
+                        { rowId: 4, taskNo: "IN2026-099881", branchName: "0210-ชลบุรี", branchCode: "0210", workGroup: "งานโครงสร้าง", issue: "ท่อน้ำรั่ว", detail: "ท่อประปาหลังร้านแตก", wfStatus: "_31_จ่ายซัพT1รอเสนอราคา", wfLog: "[]", wfDates: "{}", assignZone: "12345 - ผู้ทดสอบ ระบบ", reportDate: "20/02/2026", dueDate: "25/02/2026", createTime: "09:00:00", phone: "088-8888888", createBy: "Admin", wfVendor: "V002 - ช่างประปา", wfVendorType: "_31_จ่ายซัพT1รอเสนอราคา" },
+                        { rowId: 5, taskNo: "IN2026-112233", branchName: "0088-เชียงใหม่", branchCode: "0088", workGroup: "งานเครื่องเย็น", issue: "ตู้แช่เสียงดัง", detail: "เสียงดังมาจากคอมเพรสเซอร์", wfStatus: "_75_รอตรวจรับงาน", wfLog: "[]", wfDates: '{"entryDate":"2026-03-01"}', assignZone: "99999 - สมชาย ใจดี", reportDate: "03/03/2026", dueDate: "10/03/2026", createTime: "11:45:00", phone: "099-0000000", createBy: "User2", wfVendor: "PM: แอร์ล้านนา", wfVendorType: "_31_จ่ายซัพT1รอเสนอราคา" },
+                        { rowId: 6, taskNo: "IN2026-999998", branchName: "0101-ทดสอบ", branchCode: "0101", workGroup: "งานโครงสร้าง", issue: "หลังคารั่ว", detail: "ขอขยายเวลาทำ SLA", wfStatus: "_79_ขอยืดเวลาSLA", wfLog: '[{"action":"[ขออนุมัติยืดเวลา SLA]","remark":"ของขาดตลาด ขอขยายอีก 3 วัน"}]', wfDates: '{"entryDate":"2026-03-01"}', assignZone: "12345 - ผู้ทดสอบ ระบบ", reportDate: "01/03/2026", dueDate: "02/03/2026", createTime: "10:00:00", phone: "088-1111111", createBy: "User3", wfVendor: "V004", wfVendorType: "_31_จ่ายซัพT1รอเสนอราคา" }
+                    ];
+                    // แถมข้อมูลจำลองให้เกิน 10 หน้า
+                    for(let i=0; i<20; i++){
+                        allTasks.push({...allTasks[0], taskNo: `IN2026-108${i+200}`});
+                    }
+                }
+                
+                setTimeout(() => {
+                    populateDropdowns();
+                    applyFilter();
+                    if(isSilentRefresh && currentModalTask) {
+                        const updatedTask = allTasks.find(t => t.rowId === currentModalTask.rowId);
+                        if(updatedTask) openModal(updatedTask, true); // true = silent modal update
+                    }
+                }, 500);
+                return;
+            }
+
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    allTasks = res.data;
+                    currentUser = res.currentUserInfo || "";
+                    
+                    if(currentUser.includes(' - ')) {
+                        currentEmpId = currentUser.split(' - ')[0].trim();
+                        currentEmpName = currentUser.split(' - ')[1].trim();
+                    } else {
+                        currentEmpName = currentUser;
+                    }
+
+                    document.getElementById('user-info-display').innerHTML = `<i class="fa-solid fa-user-circle"></i> ผู้ใช้งาน: ${currentUser}`;
+                    populateDropdowns();
+                    applyFilter();
+                    
+                    if(isSilentRefresh && currentModalTask) {
+                        const updatedTask = allTasks.find(t => t.rowId === currentModalTask.rowId);
+                        if(updatedTask) openModal(updatedTask, true);
+                    }
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            }).getAssignedTasksData();
+
+            google.script.run.withSuccessHandler(res => { if(res.success) structVendors = res.data; }).getStructuralVendors();
+        }
+
+        function populateDropdowns() {
+            const empMap = new Map();
+            allTasks.forEach(row => {
+                let actualAssigneeName = row.assignZone || '-';
+                if(actualAssigneeName && actualAssigneeName !== '-') {
+                    if(!empMap.has(actualAssigneeName)) {
+                        empMap.set(actualAssigneeName, { name: actualAssigneeName, count: 0 });
+                    }
+                    empMap.get(actualAssigneeName).count++;
+                }
+            });
+            
+            let html = '<option value="ALL">All Zones...</option>';
+            const sortedEmps = Array.from(empMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+            sortedEmps.forEach(e => html += `<option value="${e.name}">${e.name} (${e.count})</option>`);
+            
+            const elFilterEmp = document.getElementById('filter-emp');
+            const currentVal = elFilterEmp.value;
+            elFilterEmp.innerHTML = html;
+            if(currentVal && currentVal !== 'ALL') elFilterEmp.value = currentVal;
+        }
+
+        function setDateMode(mode) {
+            dateMode = mode;
+            const btnDateAll = document.getElementById('btn-date-all');
+            const btnDateDay = document.getElementById('btn-date-day');
+            const btnDateRange = document.getElementById('btn-date-range');
+            const datePickerContainer = document.getElementById('date-picker-container');
+            const singleDateWrap = document.getElementById('single-date-wrap');
+            const rangeDateWrap = document.getElementById('range-date-wrap');
+
+            [btnDateAll, btnDateDay, btnDateRange].forEach(btn => btn.classList.remove('active'));
+            datePickerContainer.classList.add('hidden');
+            singleDateWrap.classList.add('hidden');
+            rangeDateWrap.classList.add('hidden');
+
+            if(mode === 'all') {
+                btnDateAll.classList.add('active');
+            } else {
+                datePickerContainer.classList.remove('hidden');
+                datePickerContainer.classList.add('flex');
+                if (mode === 'day') {
+                    btnDateDay.classList.add('active');
+                    singleDateWrap.classList.remove('hidden');
+                } else if (mode === 'range') {
+                    btnDateRange.classList.add('active');
+                    rangeDateWrap.classList.remove('hidden');
+                }
+            }
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const wGroupFilter = document.getElementById('workGroupFilter').value;
+            const empFilter = document.getElementById('filter-emp').value;
+
+            const singleTime = document.getElementById('input-date-single').value ? new Date(document.getElementById('input-date-single').value).setHours(0,0,0,0) : null;
+            const startTime = document.getElementById('input-date-start').value ? new Date(document.getElementById('input-date-start').value).setHours(0,0,0,0) : null;
+            const endTime = document.getElementById('input-date-end').value ? new Date(document.getElementById('input-date-end').value).setHours(23,59,59,999) : null;
+
+            let stats = { pending: 0, progress: 0, completed: 0, cancelled: 0, sla: 0, total: 0 };
+            let slaStats = { indue: 0, overdue: 0 };
+
+            filteredTasks = allTasks.filter(t => {
+                const sGroup = getStatusGroup(t.wfStatus);
+                
+                const matchSearch = t.taskNo.toLowerCase().includes(search) || t.branchName.toLowerCase().includes(search) || t.issue.toLowerCase().includes(search);
+                const matchWGroup = wGroupFilter === "ALL" || t.workGroup === wGroupFilter;
+                
+                let matchEmp = true;
+                if (isMyTasksOnly) {
+                    const tZone = String(t.assignZone || "");
+                    const matchName = currentEmpName && tZone.includes(currentEmpName);
+                    const matchId = currentEmpId && tZone.includes(currentEmpId);
+                    if(!matchName && !matchId) matchEmp = false;
+                } else if (empFilter !== "ALL") {
+                    if (t.assignZone !== empFilter) matchEmp = false;
+                }
+                
+                let matchDate = true;
+                if (dateMode !== 'all') {
+                    const rTime = parseDate(t.reportDate);
+                    if(!rTime) matchDate = false; 
+                    else {
+                        if (dateMode === 'day' && singleTime) { if (rTime !== singleTime) matchDate = false; }
+                        else if (dateMode === 'range') {
+                            if (startTime && rTime < startTime) matchDate = false;
+                            if (endTime && rTime > endTime) matchDate = false;
+                        }
+                    }
+                }
+                
+                const passedBaseFilters = matchSearch && matchWGroup && matchEmp && matchDate;
+                
+                if (passedBaseFilters) {
+                    stats.total++;
+                    if(sGroup === "รอดำเนินการ") stats.pending++;
+                    else if(sGroup === "ดำเนินการ") stats.progress++;
+                    else if(sGroup === "เสร็จสิ้น") stats.completed++;
+                    else if(sGroup === "ยกเลิก") stats.cancelled++;
+                    else if(sGroup === "ขอขยายเวลา") stats.sla++;
+
+                    // Calculate SLA metrics for Dashboard
+                    let currentSla = calculateSLA(t);
+                    if (currentSla.status === "Indue") slaStats.indue++;
+                    else if (currentSla.status === "Overdue") slaStats.overdue++;
+                }
+
+                // Check tab group
+                let matchTabGroup = false;
+                if (currentStatusTab === "ALL") {
+                    matchTabGroup = true;
+                } else if (currentStatusTab === "_79_ขอยืดเวลาSLA") {
+                    matchTabGroup = (t.wfStatus === "_79_ขอยืดเวลาSLA");
+                } else {
+                    matchTabGroup = (sGroup === currentStatusTab);
+                }
+                
+                return passedBaseFilters && matchTabGroup;
+            });
+
+            // Sorting
+            if (sortCol) {
+                filteredTasks.sort((a, b) => {
+                    let valA, valB;
+                    if (sortCol === 'taskNo') { valA = a.taskNo; valB = b.taskNo; }
+                    else if (sortCol === 'branchName') { valA = a.branchName; valB = b.branchName; }
+                    else if (sortCol === 'statusGroup') { valA = getStatusGroup(a.wfStatus); valB = getStatusGroup(b.wfStatus); }
+                    else if (sortCol === 'percent') { valA = getProgressPercent(a.wfStatus); valB = getProgressPercent(b.wfStatus); }
+                    else { valA = a[sortCol] || ''; valB = b[sortCol] || ''; }
+
+                    if (valA < valB) return sortAsc ? -1 : 1;
+                    if (valA > valB) return sortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            document.getElementById('stat-total').textContent = allTasks.length;
+            document.getElementById('stat-pending').textContent = allTasks.filter(t => getStatusGroup(t.wfStatus) === "รอดำเนินการ").length;
+            
+            // For the top 'Progress' stat card, we visually include SLA requests
+            const totalProgress = allTasks.filter(t => {
+                const grp = getStatusGroup(t.wfStatus);
+                return grp === "ดำเนินการ" || grp === "ขอขยายเวลา";
+            }).length;
+            document.getElementById('stat-progress').textContent = totalProgress;
+            
+            document.getElementById('stat-completed').textContent = allTasks.filter(t => getStatusGroup(t.wfStatus) === "เสร็จสิ้น").length;
+
+            document.getElementById('tab-count-pending').textContent = stats.pending;
+            document.getElementById('tab-count-progress').textContent = stats.progress;
+            document.getElementById('tab-count-completed').textContent = stats.completed;
+            document.getElementById('tab-count-cancelled').textContent = stats.cancelled;
+            document.getElementById('tab-count-sla').textContent = stats.sla;
+
+            // Render SLA Stats Cards
+            document.getElementById('stat-indue').textContent = slaStats.indue;
+            document.getElementById('stat-overdue').textContent = slaStats.overdue;
+            let totalSlaComputed = slaStats.indue + slaStats.overdue;
+            let percentOverdue = totalSlaComputed > 0 ? ((slaStats.overdue / totalSlaComputed) * 100).toFixed(0) : 0;
+            document.getElementById('stat-overdue-percent').textContent = percentOverdue + '%';
+
+            currentPage = 1; // Reset page when filtering
+            renderTable();
+        }
+
+        function getStatusGroupBadge(group) {
+            if(group === "รอดำเนินการ") return `<span class="bg-amber-50 border border-amber-200 text-amber-600 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm"><i class="fa-solid fa-hourglass-half mr-1.5"></i>รอดำเนินการ</span>`;
+            if(group === "ดำเนินการ") return `<span class="bg-sky-50 border border-sky-200 text-sky-600 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm"><i class="fa-solid fa-person-digging mr-1.5"></i>ดำเนินการ</span>`;
+            if(group === "เสร็จสิ้น") return `<span class="bg-emerald-50 border border-emerald-200 text-emerald-600 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm"><i class="fa-solid fa-check-double mr-1.5"></i>เสร็จสิ้น</span>`;
+            if(group === "ขอขยายเวลา") return `<span class="bg-orange-50 border border-orange-200 text-orange-600 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm"><i class="fa-solid fa-clock mr-1.5"></i>ขอขยายเวลา</span>`;
+            return `<span class="bg-slate-100 border border-slate-300 text-slate-600 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm"><i class="fa-solid fa-ban mr-1.5"></i>ยกเลิก</span>`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('task-table-body');
+            const totalItems = filteredTasks.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const currentRows = filteredTasks.slice(startIdx, endIdx);
+
+            document.getElementById('page-info').textContent = `Showing ${totalItems === 0 ? 0 : startIdx + 1} to ${Math.min(endIdx, totalItems)} of ${totalItems} entries`;
+            renderPaginationControls(totalPages);
+
+            if(currentRows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-16 text-center text-slate-400 bg-slate-50/30"><i class="fa-regular fa-folder-open text-4xl mb-3 text-slate-300"></i><br>ไม่พบข้อมูล</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = currentRows.map(t => {
+                const sGroup = getStatusGroup(t.wfStatus);
+                const percent = getProgressPercent(t.wfStatus);
+                const barColor = getProgressBarColor(percent);
+                const sla = calculateSLA(t);
+                
+                let assigneeName = t.assignZone || '-';
+                if (assigneeName.includes(' - ')) {
+                    assigneeName = assigneeName.split(' - ')[1].trim(); 
+                }
+
+                let createTimeStr = t.createTime || t.pullTime || '-';
+                if(createTimeStr.length > 10 && createTimeStr.includes(':')) {
+                    const parts = createTimeStr.split(' ');
+                    createTimeStr = parts[parts.length - 1]; 
+                }
+
+                let badgeHtml = getStatusGroupBadge(sGroup);
+
+                // เปลี่ยนจากการยัด JSON ไปใน HTML เป็นการส่ง Row ID แทน ป้องกันพังเวลาเจอ "
+                return `
+                <tr class="table-row-hover bg-white border-b border-slate-50 transition-colors" onclick="openModalByRowId(${t.rowId})">
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800 text-[13px]">${t.taskNo}</div>
+                        <div class="text-[11px] text-slate-500 mt-1 tracking-wide flex items-center gap-1.5"><i class="fa-regular fa-calendar"></i> ${t.reportDate || '-'} <span class="text-slate-400 text-[10px] ml-1 bg-slate-100 px-1.5 py-0.5 rounded">${createTimeStr}</span></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-indigo-700 font-bold block w-max truncate max-w-[180px] mb-1 text-[13px]" title="${t.branchName}">${t.branchName}</span>
+                        <div class="text-[11px] text-slate-500 flex items-center gap-1.5 truncate max-w-[180px]" title="${t.assignZone}"><i class="fa-solid fa-user-tag text-indigo-400"></i> ${assigneeName}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-[11px] text-slate-400 font-bold mb-0.5">${t.workGroup}</div>
+                        <div class="text-[12px] font-medium text-slate-700 truncate max-w-[200px]" title="${t.issue}">${t.issue}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">${badgeHtml}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-[12px] text-slate-600 font-medium truncate max-w-[150px]" title="${t.wfStatus}">${t.wfStatus}</div>
+                        <div class="mt-1"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}">${sla.text}</span></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="${barColor} h-2 rounded-full" style="width: ${percent}%"></div>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-500 w-8 text-right">${percent}%</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="bg-indigo-50 text-indigo-600 border border-indigo-200 text-[11px] font-bold px-3.5 py-2 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                            จัดการ <i class="fa-solid fa-arrow-right-long text-[10px]"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        // Pagination UI Generator
+        function renderPaginationControls(totalPages) {
+            const pageNumbersEl = document.getElementById('page-numbers');
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+
+            btnPrev.disabled = currentPage === 1;
+            btnNext.disabled = currentPage === totalPages || totalPages === 0;
+
+            let html = '';
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<button class="h-8 w-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center shadow-sm text-[12px]">${i}</button>`;
+                } else {
+                    html += `<button class="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-600 font-medium flex items-center justify-center transition-colors text-[12px]" onclick="goToPage(${i})">${i}</button>`;
+                }
+            }
+            pageNumbersEl.innerHTML = html;
+        }
+
+        window.goToPage = function(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        // ==========================================
+        // 3. MODAL & DYNAMIC WORKFLOW UI (SIDEBAR MENU)
+        // ==========================================
+        function closeModal() { 
+            document.getElementById('action-modal').classList.add('hidden'); 
+            currentModalTask = null; 
+            isEditMode = false;
+            currentEditReason = "";
+        }
+        
+        function openModal(task, isSilent = false) {
+            currentModalTask = task;
+            isEditMode = false;
+            currentEditReason = "";
+            const percent = getProgressPercent(task.wfStatus);
+            const barColor = getProgressBarColor(percent);
+            const sla = calculateSLA(task);
+
+            document.getElementById('modal-task-no').textContent = task.taskNo;
+            document.getElementById('modal-branch').textContent = task.branchName;
+            document.getElementById('modal-group').textContent = task.workGroup;
+            document.getElementById('modal-issue').textContent = task.issue;
+            
+            document.getElementById('modal-sla-badge').innerHTML = `<span class="px-2 py-1 rounded-md text-[10px] font-bold border ${sla.color}">${sla.text}</span>`;
+            
+            let statusBadgeClass = "bg-white border-indigo-200 text-indigo-700";
+            if (task.wfStatus === "_79_ขอยืดเวลาSLA") {
+                statusBadgeClass = "bg-orange-50 border-orange-200 text-orange-700";
+            }
+            document.getElementById('modal-status-badge').innerHTML = `<span class="border px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm inline-block ${statusBadgeClass}">${task.wfStatus}</span>`;
+            
+            const pBar = document.getElementById('modal-progress-bar');
+            pBar.className = `${barColor} h-1.5 rounded-full progress-bar-fill`;
+            setTimeout(() => { pBar.style.width = `${percent}%`; }, 100);
+            
+            renderTimeline(task.wfLog);
+            
+            // Build Sidebar Menu based on progress
+            buildSidebarMenu(task);
+            
+            // ถ้าไม่ใช่การรีเฟรชเงียบๆ ให้แสดง Tab ที่แนะนำให้อัตโนมัติ
+            if (!isSilent) {
+                currentWfTab = determineRecommendedTab(task);
+            }
+            switchTab(currentWfTab);
+
+            document.getElementById('action-modal').classList.remove('hidden');
+        }
+
+        function renderTimeline(logStr) {
+            const tl = document.getElementById('modal-timeline');
+            try {
+                const logs = JSON.parse(logStr);
+                if(logs.length === 0) { tl.innerHTML = `<p class="text-[12px] text-slate-400 italic">ยังไม่มีประวัติการทำงาน</p>`; return; }
+                
+                tl.innerHTML = logs.reverse().map(l => {
+                    const isEdit = l.action.includes('[แก้ไข]');
+                    const actionClass = isEdit ? 'text-amber-600' : 'text-indigo-700';
+                    return `
+                        <div class="relative timeline-item pl-5 pb-2">
+                            <p class="text-[10px] text-slate-500 font-bold tracking-wide">${l.date}</p>
+                            <p class="text-[13px] font-bold ${actionClass} mt-0.5">${l.action}</p>
+                            ${l.remark ? `<p class="text-[12px] text-slate-600 mt-1.5 bg-slate-50 border border-slate-100 p-2.5 rounded-lg leading-relaxed">${l.remark}</p>` : ''}
+                            <p class="text-[10px] text-slate-400 mt-1.5"><i class="fa-regular fa-circle-user mr-1"></i> ${l.user}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) { tl.innerHTML = `<p class="text-xs text-red-400">Error loading logs</p>`; }
+        }
+
+        // --- ดูรายละเอียดงานทั้งหมดแบบ Popup ซ้อน ---
+        window.showFullDetailsPopup = function() {
+            if(!currentModalTask) return;
+            const task = currentModalTask;
+
+            let actualAssignee = task.assignZone || '-';
+            let prov = task.province || '-';
+            if (prov === '-') {
+                 const branchText = String(task.branchName || "").trim();
+                 if (branchText.includes('-')) prov = branchText.split('-')[1].trim();
+            }
+
+            const detailHtml = `
+                <div class="font-prompt text-left text-slate-800 p-2 sm:p-4">
+                    <div class="flex items-center gap-3 mb-6">
+                        <i class="fa-solid fa-file-lines text-indigo-600 text-xl"></i>
+                        <h2 class="text-[20px] font-bold text-slate-800 tracking-wide">รายละเอียดงานฉบับเต็ม</h2>
+                    </div>
+
+                    <div class="flex gap-4 mb-5">
+                        <div class="flex-1 bg-slate-50 border border-slate-100 rounded-[14px] p-4">
+                            <div class="text-[11px] text-slate-400 font-medium mb-1 tracking-wide">Task No.</div>
+                            <div class="text-[16px] font-bold text-slate-800">${task.taskNo || '-'}</div>
+                        </div>
+                        <div class="flex-1 bg-slate-50 border border-slate-100 rounded-[14px] p-4">
+                            <div class="text-[11px] text-slate-400 font-medium mb-1 tracking-wide">High/Low</div>
+                            <div class="text-[16px] font-bold ${task.highLow === 'HIGH' ? 'text-rose-600' : 'text-emerald-600'}">${task.highLow || '-'}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5 border-b border-slate-100 pb-5 space-y-3">
+                        <div>
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">Issue / ปัญหา</span>
+                            <div class="font-bold text-rose-600 text-[15px]">${task.issue || '-'}</div>
+                        </div>
+                        <div>
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">Detail / รายละเอียดการแจ้งซ่อม</span>
+                            <div class="text-slate-700 text-[14px] leading-relaxed whitespace-pre-wrap bg-slate-50 p-3 rounded-lg border border-slate-100">${task.detail || '-'}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-y-5 gap-x-4 mb-5 border-b border-slate-100 pb-5">
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">ชื่อสาขา / จังหวัด</span>
+                            <span class="font-bold text-indigo-700 text-[14px] block truncate" title="${task.branchName}">${task.branchName || '-'} <span class="text-slate-500 text-[12px] font-normal ml-1">(${prov})</span></span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">เบอร์โทรสาขา</span>
+                            <span class="font-medium text-slate-800 text-[14px] block">${task.phone || '-'}</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">วันที่แจ้งงาน</span>
+                            <span class="font-medium text-slate-800 text-[14px] block">${task.reportDate || '-'}</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">กำหนดวันแล้วเสร็จ</span>
+                            <span class="font-bold text-slate-800 text-[14px] block">${task.dueDate || '-'}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <span class="text-[11px] text-slate-400 font-medium block mb-1 tracking-wide">กลุ่มงาน</span>
+                        <div class="text-slate-700 text-[14px] font-bold">${task.workGroup || '-'}</div>
+                    </div>
+
+                    <div class="bg-indigo-50/40 rounded-xl border border-indigo-100 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3">
+                        <div class="flex-1">
+                            <span class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider block mb-1">Assignee (Zone)</span>
+                            <span class="font-bold text-slate-800 text-[14px]">${actualAssignee}</span>
+                        </div>
+                        <div class="text-left sm:text-right flex-shrink-0">
+                            <span class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider block mb-1">Create By</span>
+                            <span class="font-medium text-slate-600 text-[13px]">${task.createBy || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                html: detailHtml,
+                showConfirmButton: true,
+                confirmButtonText: 'ปิดหน้าต่าง',
+                buttonsStyling: false,
+                width: '600px',
+                customClass: { 
+                    popup: '!rounded-3xl !p-4 shadow-2xl overflow-hidden font-prompt',
+                    confirmButton: 'w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors text-[14px] mt-2'
+                }
+            });
+        }
+
+        // --- ระบบเช็ค Checklist และสร้าง Sidebar ---
+        function buildSidebarMenu(task) {
+            const status = task.wfStatus || "";
+            const group = task.workGroup;
+            let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+            
+            let p = 0; // level of progress
+            if (status === "งานเสร็จแล้ว") p = 6;
+            else if (status === "_75_รอตรวจรับงาน") p = 5;
+            else if (status.startsWith("_6") || status.startsWith("_7") && status !== "_79_ขอยืดเวลาSLA") p = 4; // ช่างเข้างาน
+            else if (status === "_50_ส่งเปิดPOก่อนเข้างาน") p = 4; // อนุมัติแล้ว รอเข้างาน
+            else if (status === "_41_รอพิจารณาราคา") p = 3;
+            else if (status.startsWith("_3")) p = 3; // จ่ายงานแล้ว 
+            else if (status === "_20_รอพิจารณาการทำงาน" || status === "_21_ส่งทีมเข้าสำรวจ" || status === "_79_ขอยืดเวลาSLA") p = 1;
+            
+            // เช็คกรณีมีการกด "ข้ามขั้นตอน" 
+            if (datesObj.skippedSteps && Array.isArray(datesObj.skippedSteps)) {
+                if(datesObj.skippedSteps.includes('STEP1')) p = Math.max(p, 1);
+                if(datesObj.skippedSteps.includes('STEP2')) p = Math.max(p, 3);
+                if(datesObj.skippedSteps.includes('STEP3')) p = Math.max(p, 4);
+                if(datesObj.skippedSteps.includes('STEP4')) p = Math.max(p, 5);
+                if(datesObj.skippedSteps.includes('STEP5')) p = Math.max(p, 6);
+            }
+
+            task._progressLevel = p;
+
+            const menuEl = document.getElementById('modal-sidebar-menu');
+            const checkIcon = `<div class="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center"><i class="fa-solid fa-check text-[10px]"></i></div>`;
+            
+            let html = `
+                <button onclick="switchTab('step_1')" class="wf-step-btn flex flex-col" id="btn-tab-step_1">
+                    <span class="text-[10px] font-bold ${p >= 1 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step 1</span>
+                    <span class="font-bold text-[13px] ${p >= 1 ? 'text-indigo-700' : 'text-slate-700'}">พิจารณาการทำงาน</span>
+                    ${p >= 1 ? checkIcon : ''}
+                </button>
+                <button onclick="switchTab('step_2')" class="wf-step-btn flex flex-col" id="btn-tab-step_2">
+                    <span class="text-[10px] font-bold ${p >= 3 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step 2</span>
+                    <span class="font-bold text-[13px] ${p >= 3 ? 'text-indigo-700' : 'text-slate-700'}">จ่ายงานให้ผู้รับเหมา</span>
+                    ${p >= 3 ? checkIcon : ''}
+                </button>
+            `;
+
+            if (group === "งานโครงสร้าง") {
+                html += `
+                    <button onclick="switchTab('step_3')" class="wf-step-btn flex flex-col" id="btn-tab-step_3">
+                        <span class="text-[10px] font-bold ${p >= 4 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step 3</span>
+                        <span class="font-bold text-[13px] ${p >= 4 ? 'text-indigo-700' : 'text-slate-700'}">อนุมัติราคา / เปิด PO</span>
+                        ${p >= 4 ? checkIcon : ''}
+                    </button>
+                `;
+            }
+
+            html += `
+                <button onclick="switchTab('step_4')" class="wf-step-btn flex flex-col" id="btn-tab-step_4">
+                    <span class="text-[10px] font-bold ${p >= 5 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step ${group === "งานโครงสร้าง" ? '4' : '3'}</span>
+                    <span class="font-bold text-[13px] ${p >= 5 ? 'text-indigo-700' : 'text-slate-700'}">อัปเดตช่างเข้างาน</span>
+                    ${p >= 5 ? checkIcon : ''}
+                </button>
+                <button onclick="switchTab('step_5')" class="wf-step-btn flex flex-col" id="btn-tab-step_5">
+                    <span class="text-[10px] font-bold ${p >= 6 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step ${group === "งานโครงสร้าง" ? '5' : '4'}</span>
+                    <span class="font-bold text-[13px] ${p >= 6 ? 'text-indigo-700' : 'text-slate-700'}">ตรวจรับงาน</span>
+                    ${p >= 6 ? checkIcon : ''}
+                </button>
+                <button onclick="switchTab('step_6')" class="wf-step-btn flex flex-col" id="btn-tab-step_6">
+                    <span class="text-[10px] font-bold ${p >= 6 ? 'text-indigo-400' : 'text-slate-400'} uppercase">Step ${group === "งานโครงสร้าง" ? '6' : '5'}</span>
+                    <span class="font-bold text-[13px] ${p >= 6 ? 'text-indigo-700' : 'text-slate-700'}">ปิดงานสมบูรณ์</span>
+                    ${p >= 6 && status === 'งานเสร็จแล้ว' ? checkIcon : ''}
+                </button>
+            `;
+            
+            menuEl.innerHTML = html;
+        }
+
+        function determineRecommendedTab(task) {
+            const status = task.wfStatus;
+            const group = task.workGroup;
+            
+            if (status === "งานยกเลิก") return "cancel_task";
+            if (status === "งานเสร็จแล้ว") return "step_6";
+            if (status === "_75_รอตรวจรับงาน") return "step_5";
+            
+            if (status === "_79_ขอยืดเวลาSLA") return "sla_override";
+
+            if (status.startsWith("_6") || status.startsWith("_7") && !status.includes("_79_")) return "step_4";
+            if (status === "_50_ส่งเปิดPOก่อนเข้างาน") return "step_4";
+            
+            if (status === "_41_รอพิจารณาราคา" && group === "งานโครงสร้าง") return "step_3";
+            if (status.startsWith("_3")) return "step_4"; 
+            
+            if (status === "_00_รอจ่ายงาน" || status === "_20_รอพิจารณาการทำงาน" || status === "_21_ส่งทีมเข้าสำรวจ") return "step_2"; 
+            
+            return "step_1"; 
+        }
+
+        window.switchTab = function(tabId) {
+            currentWfTab = tabId;
+            isEditMode = false; // รีเซ็ตสถานะการ Edit เมื่อเปลี่ยน Tab
+            currentEditReason = "";
+            
+            // Highlight Menu
+            document.querySelectorAll('.wf-step-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+            if(activeBtn) activeBtn.classList.add('active');
+
+            renderWorkspaceContent(tabId);
+        }
+
+        // ฟังก์ชันเริ่ม Edit Mode พร้อมถามเหตุผล
+        window.promptEdit = function(tabId) {
+            Swal.fire({
+                title: 'ระบุเหตุผลการแก้ไข',
+                input: 'text',
+                inputPlaceholder: 'เช่น เปลี่ยนช่าง, กรอกราคาผิด...',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันเพื่อแก้ไข',
+                cancelButtonText: 'ยกเลิก',
+                customClass: { popup: '!rounded-2xl font-prompt' }
+            }).then((res) => {
+                if(res.isConfirmed && res.value.trim() !== '') {
+                    isEditMode = true;
+                    currentEditReason = res.value.trim();
+                    renderWorkspaceContent(tabId); // Re-render tab in edit mode
+                } else if (res.isConfirmed) {
+                    Swal.fire({icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณาระบุเหตุผลก่อนทำการแก้ไข', customClass: { popup: '!rounded-2xl font-prompt' }});
+                }
+            });
+        }
+
+        // Helper สำหรับสร้างปุ่ม "ข้ามขั้นตอน"
+        function buildSkipButton(stepNameKey, tabIdForSkip) {
+            return `
+                <div class="mt-8 pt-4 border-t border-slate-200 text-center">
+                    <button onclick="promptSkipStep('${stepNameKey}')" class="text-[12px] font-bold text-slate-400 hover:text-rose-500 transition-colors bg-white border border-slate-200 hover:bg-rose-50 px-4 py-2 rounded-xl">
+                        <i class="fa-solid fa-forward-step mr-1"></i> ข้ามขั้นตอนนี้ (ไม่ต้องทำ)
+                    </button>
+                </div>
+            `;
+        }
+
+        window.promptSkipStep = function(stepNameKey) {
+            Swal.fire({
+                title: 'ระบุเหตุผลการข้ามขั้นตอน',
+                input: 'text',
+                inputPlaceholder: 'เช่น ทางร้านซ่อมเองแล้ว, ไม่จำเป็นต้องทำ...',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการข้าม',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#10b981',
+                customClass: { popup: '!rounded-2xl font-prompt' }
+            }).then((res) => {
+                if(res.isConfirmed && res.value.trim() !== '') {
+                    isEditMode = true; // Use edit mode flag to route the log properly
+                    currentEditReason = res.value.trim();
+                    executeSkipStep(stepNameKey);
+                } else if (res.isConfirmed) {
+                    Swal.fire({icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณาระบุเหตุผลการข้ามขั้นตอน', customClass: { popup: '!rounded-2xl font-prompt' }});
+                }
+            });
+        }
+
+        function executeSkipStep(stepNameKey) {
+            let datesObj = {}; try{ datesObj = JSON.parse(currentModalTask.wfDates); } catch(e){}
+            let skipped = datesObj.skippedSteps || [];
+            if (!skipped.includes(stepNameKey)) skipped.push(stepNameKey);
+            
+            let payload = {
+                rowId: currentModalTask.rowId,
+                status: null, // Keep status as is, just save log & dates
+                updates: { dates: { skippedSteps: skipped } },
+                newLogEntry: { 
+                    date: new Date().toLocaleString('th-TH'), 
+                    user: currentUser, 
+                    action: `[ข้ามขั้นตอน] ข้ามการทำ ${stepNameKey}`, 
+                    remark: `เหตุผล: ${currentEditReason}` 
+                }
+            };
+
+            const overlay = document.getElementById('modal-loading-overlay');
+            overlay.classList.remove('hidden');
+
+            if (typeof google === 'undefined') {
+                setTimeout(() => { overlay.classList.add('hidden'); loadData(true); }, 1000);
+                return;
+            }
+
+            google.script.run.withSuccessHandler(res => {
+                overlay.classList.add('hidden');
+                if(res.success) loadData(true);
+            }).updateTaskWorkflow(payload);
+        }
+
+        // Helper สำหรับสร้าง Card แสดงข้อมูลที่บันทึกแล้ว
+        function buildSummaryCard(title, contentHtml, tabId) {
+            return `
+                <div class="mb-6">
+                    <h4 class="font-bold text-emerald-700 text-[20px] mb-1 flex items-center gap-2"><i class="fa-solid fa-check-circle"></i> ${title}</h4>
+                    <p class="text-[13px] text-slate-500">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</p>
+                </div>
+                <div class="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-6 shadow-sm relative">
+                    <button onclick="promptEdit('${tabId}')" class="absolute top-4 right-4 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen"></i> แก้ไข
+                    </button>
+                    ${contentHtml}
+                </div>
+            `;
+        }
+
+        function checkIsSkipped(stepKey) {
+            let datesObj = {}; try{ datesObj = JSON.parse(currentModalTask.wfDates); } catch(e){}
+            return (datesObj.skippedSteps || []).includes(stepKey);
+        }
+
+        // --- Render UI ตามแถบที่เลือก (รองรับ View, Edit, Skip) ---
+        function renderWorkspaceContent(tabId) {
+            const ws = document.getElementById('action-workspace-content');
+            const task = currentModalTask;
+            const group = task.workGroup;
+            const status = task.wfStatus;
+            const p = task._progressLevel;
+
+            let html = '';
+
+            // --- STEP 1 ---
+            if (tabId === 'step_1') {
+                const isSkipped = checkIsSkipped('STEP1');
+                const isDone = isSkipped || (p >= 1 && status !== "_00_รอจ่ายงาน");
+                
+                if (isDone && !isEditMode) {
+                    let lastRemark = "-";
+                    try {
+                        const logs = JSON.parse(task.wfLog);
+                        const filtered = logs.filter(l => l.action.includes('เปลี่ยนสถานะเป็น'));
+                        if(filtered.length > 0) lastRemark = filtered[filtered.length - 1].remark || "-";
+                    } catch(e){}
+
+                    const content = isSkipped ? 
+                        `<div class="text-slate-500 font-bold"><i class="fa-solid fa-forward-step mr-2"></i>ขั้นตอนนี้ถูกข้ามไปแล้ว</div>` :
+                        `
+                        <div class="space-y-4">
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">สถานะที่บันทึก</p><p class="text-[14px] font-bold text-slate-800">${status}</p></div>
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">รายละเอียด</p><div class="bg-white p-3 rounded-xl border border-emerald-100 text-[13px] text-slate-700 whitespace-pre-wrap">${lastRemark}</div></div>
+                        </div>
+                        `;
+                    html = buildSummaryCard("พิจารณาการทำงาน", content, tabId);
+                } else {
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">พิจารณาการทำงาน ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">บันทึกความคืบหน้าเบื้องต้น หรือส่งทีมเข้าสำรวจก่อนจ่ายงาน</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-slate-200'} rounded-2xl p-6 shadow-sm">
+                            <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">เลือกสถานะการพิจารณา</label>
+                            <select id="action-select-1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] focus:ring-2 focus:ring-indigo-500 outline-none mb-4">
+                                <option value="_20_รอพิจารณาการทำงาน" ${status === '_20_รอพิจารณาการทำงาน' ? 'selected' : ''}>รอพิจารณา / บันทึกความคืบหน้า</option>
+                                ${group === 'งานโครงสร้าง' ? `<option value="_21_ส่งทีมเข้าสำรวจ" ${status === '_21_ส่งทีมเข้าสำรวจ' ? 'selected' : ''}>ส่งทีมเข้าสำรวจ</option>` : ''}
+                            </select>
+                            
+                            <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">รายละเอียด / แนวทางแก้ไข</label>
+                            <textarea id="action-remark-1" rows="4" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-4 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" placeholder="พิมพ์รายละเอียดที่นี่..."></textarea>
+                            
+                            <button onclick="confirmSubmitTab('STEP1', 'บันทึกสถานะใหม่')" class="mt-5 w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-[14px] shadow-md hover:bg-indigo-700 transition-colors">บันทึกข้อมูลการพิจารณา</button>
+                        </div>
+                        ${buildSkipButton('STEP1', tabId)}
+                    `;
+                }
+            }
+            // --- STEP 2 ---
+            else if (tabId === 'step_2') {
+                const isSkipped = checkIsSkipped('STEP2');
+                const isDone = isSkipped || p >= 3 || (task.wfVendor && task.wfVendor !== '');
+
+                if (isDone && !isEditMode) {
+                    const content = isSkipped ? 
+                        `<div class="text-slate-500 font-bold"><i class="fa-solid fa-forward-step mr-2"></i>ขั้นตอนนี้ถูกข้ามไปแล้ว</div>` :
+                        `
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2"><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">ผู้รับเหมา / ช่างที่รับงาน</p><p class="text-[15px] font-bold text-slate-800 bg-white p-3 rounded-xl border border-emerald-100">${task.wfVendor || '-'}</p></div>
+                            <div class="col-span-2"><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">ประเภทการจ่ายงาน</p><p class="text-[14px] font-medium text-slate-700">${task.wfVendorType || '-'}</p></div>
+                        </div>
+                        `;
+                    html = buildSummaryCard("จ่ายงานให้ผู้รับเหมา", content, tabId);
+                } else {
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">จ่ายงานให้ผู้รับเหมา ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">เลือกช่างหรือผู้รับเหมา และกำหนดประเภทการจ่ายงาน</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-slate-200'} rounded-2xl p-6 shadow-sm">
+                    `;
+
+                    if (group === 'งานโครงสร้าง') {
+                        html += `
+                            <div class="space-y-5">
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">1. ค้นหาผู้รับเหมาโครงสร้าง</label>
+                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                        <select id="sel-prov" class="border border-slate-200 rounded-xl p-3 text-[13px] outline-none bg-slate-50 focus:bg-white focus:border-indigo-500 transition-colors" onchange="filterStructVendors()"><option value="">-- กรองจังหวัด --</option>${[...new Set(structVendors.map(v=>v.province))].map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+                                        <select id="sel-type" class="border border-slate-200 rounded-xl p-3 text-[13px] outline-none bg-slate-50 focus:bg-white focus:border-indigo-500 transition-colors" onchange="filterStructVendors()"><option value="">-- กรองประเภทงาน --</option>${[...new Set(structVendors.map(v=>v.workType))].map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+                                    </div>
+                                    <select id="sel-vendor" class="w-full border border-indigo-200 rounded-xl p-3.5 text-[14px] outline-none bg-indigo-50/30 focus:border-indigo-500 font-bold text-indigo-700 shadow-sm">
+                                        ${task.wfVendor ? `<option value="${task.wfVendor}" selected>${task.wfVendor}</option>` : '<option value="">-- รายชื่อ Vendor --</option>'}
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">2. ประเภทการจ่ายงาน</label>
+                                    <select id="sel-t-type" class="w-full border border-slate-200 rounded-xl p-3.5 text-[13px] outline-none focus:border-indigo-500 bg-slate-50">
+                                        <option value="_31_จ่ายซัพT1รอเสนอราคา" ${task.wfVendorType === '_31_จ่ายซัพT1รอเสนอราคา' ? 'selected' : ''}>T1 - รอเสนอราคา</option>
+                                        <option value="_32_จ่ายซัพT2รอเสนอราคา" ${task.wfVendorType === '_32_จ่ายซัพT2รอเสนอราคา' ? 'selected' : ''}>T2 - รอเสนอราคา</option>
+                                        <option value="_33_จ่ายซัพT3รอเสนอราคา" ${task.wfVendorType === '_33_จ่ายซัพT3รอเสนอราคา' ? 'selected' : ''}>T3 - รอเสนอราคา</option>
+                                        <option value="_34_จ่าย Inspector" ${task.wfVendorType === '_34_จ่าย Inspector' ? 'selected' : ''}>Inspector</option>
+                                    </select>
+                                </div>
+                                
+                                <button onclick="confirmSubmitTab('ASSIGN_STRUCT', 'ยืนยันจ่ายงาน (Assign)')" class="w-full bg-[#3b5947] text-white font-bold py-3.5 rounded-xl text-[14px] shadow-md hover:bg-[#2b4435] transition-colors mt-2">ยืนยันจ่ายงานให้ผู้รับเหมา</button>
+                            </div>
+                        `;
+                        setTimeout(filterStructVendors, 100);
+                    } else {
+                        html += `<div class="space-y-5" id="cooling-vendor-loader"><div class="text-center py-8 text-indigo-500"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><br><span class="text-sm">กำลังดึงข้อมูลช่างประจำสาขา...</span></div></div>`;
+                        if (typeof google !== 'undefined') {
+                            google.script.run.withSuccessHandler(res => {
+                                if(res.success) {
+                                    document.getElementById('cooling-vendor-loader').innerHTML = `
+                                        <div>
+                                            <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">1. ผู้รับเหมาประจำสาขา (เครื่องเย็น)</label>
+                                            <select id="sel-vendor" class="w-full border border-indigo-200 rounded-xl p-3.5 text-[14px] outline-none bg-indigo-50/30 font-bold text-indigo-700 shadow-sm focus:border-indigo-500">
+                                                <option value="${res.pm}" ${task.wfVendor === res.pm ? 'selected' : ''}>PM: ${res.pm}</option>
+                                                <option value="${res.turnkey}" ${task.wfVendor === res.turnkey ? 'selected' : ''}>Turnkey: ${res.turnkey}</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">2. ประเภทการจ่ายงาน</label>
+                                            <select id="sel-t-type" class="w-full border border-slate-200 rounded-xl p-3.5 text-[13px] outline-none focus:border-indigo-500 bg-slate-50">
+                                                <option value="_31_จ่ายซัพT1รอเสนอราคา" ${task.wfVendorType === '_31_จ่ายซัพT1รอเสนอราคา' ? 'selected' : ''}>T1 - รอเสนอราคา</option>
+                                                <option value="_32_จ่ายซัพT2รอเสนอราคา" ${task.wfVendorType === '_32_จ่ายซัพT2รอเสนอราคา' ? 'selected' : ''}>T2 - รอเสนอราคา</option>
+                                                <option value="_33_จ่ายซัพT3รอเสนอราคา" ${task.wfVendorType === '_33_จ่ายซัพT3รอเสนอราคา' ? 'selected' : ''}>T3 - รอเสนอราคา</option>
+                                                <option value="_34_จ่าย Inspector" ${task.wfVendorType === '_34_จ่าย Inspector' ? 'selected' : ''}>Inspector</option>
+                                            </select>
+                                        </div>
+                                        <button onclick="confirmSubmitTab('ASSIGN_COOL', 'ยืนยันจ่ายงานเครื่องเย็น')" class="w-full bg-[#3b5947] text-white font-bold py-3.5 rounded-xl text-[14px] shadow-md hover:bg-[#2b4435] transition-colors mt-2">ยืนยันจ่ายงานให้ผู้รับเหมา</button>
+                                    `;
+                                }
+                            }).getCoolingVendors(task.branchCode);
+                        }
+                    }
+                    html += `</div> ${buildSkipButton('STEP2', tabId)}`;
+                }
+            }
+            // --- STEP 3 ---
+            else if (tabId === 'step_3') {
+                const isSkipped = checkIsSkipped('STEP3');
+                const isDone = isSkipped || p >= 4 || task.wfPO;
+
+                if (isDone && !isEditMode) {
+                    let costObj = { mat: 0, labor: 0, travel: 0, total: 0 };
+                    try { costObj = JSON.parse(task.wfCost); } catch(e){}
+
+                    const content = isSkipped ? 
+                        `<div class="text-slate-500 font-bold"><i class="fa-solid fa-forward-step mr-2"></i>ขั้นตอนนี้ถูกข้ามไปแล้ว</div>` :
+                        `
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">เลขที่เอกสาร PO</p><p class="text-[14px] font-bold text-slate-800 bg-white p-2 rounded-lg border border-emerald-100">${task.wfPO || '-'}</p></div>
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">รวมค่าใช้จ่าย</p><p class="text-[16px] font-bold text-amber-600">${Number(costObj.total).toLocaleString()} ฿</p></div>
+                            
+                            <div class="col-span-2 pt-3 border-t border-emerald-200/50 flex gap-4 text-[12px]">
+                                <div><span class="text-slate-500">วัสดุ:</span> <span class="font-medium">${Number(costObj.mat).toLocaleString()}</span></div>
+                                <div><span class="text-slate-500">ค่าแรง:</span> <span class="font-medium">${Number(costObj.labor).toLocaleString()}</span></div>
+                                <div><span class="text-slate-500">เดินทาง:</span> <span class="font-medium">${Number(costObj.travel).toLocaleString()}</span></div>
+                            </div>
+                        </div>
+                        `;
+                    html = buildSummaryCard("อนุมัติราคาและเปิด PO", content, tabId);
+                } else {
+                    let costObj = { mat: '', labor: '', travel: '', total: 0 };
+                    try { costObj = JSON.parse(task.wfCost || '{}'); } catch(e){}
+
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">อนุมัติราคาและเปิด PO ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">พิจารณาราคาประเมินจากผู้รับเหมา (เฉพาะงานโครงสร้าง)</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-slate-200'} rounded-2xl p-6 shadow-sm space-y-5">
+                            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-5">
+                                <h5 class="text-[13px] font-bold text-amber-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar"></i> กรอกราคาประเมิน</h5>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="text-[11px] font-bold text-slate-500 block mb-1">ค่าวัสดุ (บาท)</label><input type="number" id="cost-mat" value="${costObj.mat || ''}" class="w-full border border-slate-200 rounded-lg p-2.5 text-[13px] focus:ring-amber-500 focus:border-amber-500 bg-white" oninput="calcTotal()"></div>
+                                    <div><label class="text-[11px] font-bold text-slate-500 block mb-1">ค่าแรง (บาท)</label><input type="number" id="cost-labor" value="${costObj.labor || ''}" class="w-full border border-slate-200 rounded-lg p-2.5 text-[13px] focus:ring-amber-500 focus:border-amber-500 bg-white" oninput="calcTotal()"></div>
+                                    <div><label class="text-[11px] font-bold text-slate-500 block mb-1">ค่าเดินทาง (บาท)</label><input type="number" id="cost-travel" value="${costObj.travel || ''}" class="w-full border border-slate-200 rounded-lg p-2.5 text-[13px] focus:ring-amber-500 focus:border-amber-500 bg-white" oninput="calcTotal()"></div>
+                                    <div class="bg-white border border-amber-200 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm">
+                                        <span class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">รวมทั้งหมด</span>
+                                        <span id="cost-total" class="font-bold text-xl text-amber-600">${Number(costObj.total || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button onclick="confirmSubmitTab('REJECT_PRICE', 'ไม่อนุมัติ (เจรจาใหม่)')" class="flex-1 bg-white border-2 border-rose-200 text-rose-500 font-bold py-3.5 rounded-xl hover:bg-rose-50 text-[14px] transition-colors">ไม่อนุมัติ (ตีกลับ)</button>
+                                <button onclick="document.getElementById('po-input-section').classList.remove('hidden')" class="flex-1 bg-emerald-500 text-white font-bold py-3.5 rounded-xl hover:bg-emerald-600 text-[14px] shadow-md transition-colors">อนุมัติ (กรอก PO)</button>
+                            </div>
+
+                            <div id="po-input-section" class="${task.wfPO ? '' : 'hidden'} mt-2 bg-emerald-50/50 p-5 rounded-xl border border-emerald-200">
+                                <label class="text-[12px] font-bold text-emerald-800 block mb-2 uppercase tracking-wide">ระบุเลขที่เอกสาร PO</label>
+                                <input type="text" id="input-po" value="${task.wfPO || ''}" placeholder="ระบุเลข PO..." class="w-full border border-emerald-200 rounded-xl p-3 text-[14px] focus:ring-emerald-500 focus:border-emerald-500 mb-4 bg-white shadow-sm font-bold text-emerald-700">
+                                <button onclick="confirmSubmitTab('_50_ส่งเปิดPOก่อนเข้างาน', 'บันทึกราคาและ PO')" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl text-[14px] hover:bg-emerald-700 transition-colors shadow-md">บันทึกข้อมูลและเตรียมส่งช่าง</button>
+                            </div>
+                        </div>
+                        ${buildSkipButton('STEP3', tabId)}
+                    `;
+                }
+            }
+            // --- STEP 4 ---
+            else if (tabId === 'step_4') {
+                let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+                let existingEntry = datesObj.entryDate || "";
+                
+                const isSkipped = checkIsSkipped('STEP4');
+                const isDone = isSkipped || (existingEntry !== "" && p >= 4);
+
+                if (isDone && !isEditMode) {
+                    const content = isSkipped ? 
+                        `<div class="text-slate-500 font-bold"><i class="fa-solid fa-forward-step mr-2"></i>ขั้นตอนนี้ถูกข้ามไปแล้ว</div>` :
+                        `
+                        <div class="space-y-4">
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">วันที่เข้าดำเนินการ</p><p class="text-[15px] font-bold text-slate-800"><i class="fa-regular fa-calendar-check mr-2 text-emerald-500"></i>${existingEntry}</p></div>
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">สถานะช่างล่าสุด</p><p class="text-[13px] font-medium text-slate-700 bg-white p-2.5 rounded-lg border border-emerald-100 w-max">${status}</p></div>
+                        </div>
+                        `;
+                    html = buildSummaryCard("อัปเดตช่างเข้างาน", content, tabId);
+                } else {
+                    let structOptions = `
+                        <option value="_60_ส่งผู้รับเหมาเข้างานซ่อม" ${status === '_60_ส่งผู้รับเหมาเข้างานซ่อม' ? 'selected':''}>_60_ส่งผู้รับเหมาเข้างานซ่อม</option>
+                        <option value="_64_ส่งผรม.งานเคลมเข้างาน" ${status === '_64_ส่งผรม.งานเคลมเข้างาน' ? 'selected':''}>_64_ส่งผรม.งานเคลมเข้างาน</option>
+                        <option value="_65_ส่งผรม.Renovateเข้างาน" ${status === '_65_ส่งผรม.Renovateเข้างาน' ? 'selected':''}>_65_ส่งผรม.Renovateเข้างาน</option>
+                        <option value="_70_ส่งทรัพย์สินส่งเครื่องใหม่" ${status === '_70_ส่งทรัพย์สินส่งเครื่องใหม่' ? 'selected':''}>_70_ส่งทรัพย์สินส่งเครื่องใหม่</option>
+                        <option value="_71_ส่งทรัพย์สินเรียกเก็บ" ${status === '_71_ส่งทรัพย์สินเรียกเก็บ' ? 'selected':''}>_71_ส่งทรัพย์สินเรียกเก็บ</option>
+                        <option value="_72_ส่งต่อกฏหมาย" ${status === '_72_ส่งต่อกฏหมาย' ? 'selected':''}>_72_ส่งต่อกฏหมาย</option>
+                        <option value="_76_รอทรัพย์สินส่งถึงสาขา" ${status === '_76_รอทรัพย์สินส่งถึงสาขา' ? 'selected':''}>_76_รอทรัพย์สินส่งถึงสาขา</option>
+                        <option value="_75_รอตรวจรับงาน" class="font-bold text-emerald-600">✅ งานเสร็จแล้ว (ส่งให้สาขาตรวจรับ)</option>
+                    `;
+                    if (!status.startsWith("_6") && !status.startsWith("_7")) {
+                        structOptions = `<option value="${status}" selected>-- เลือกสถานะช่าง --</option>` + structOptions;
+                    }
+
+                    let coolOptions = `
+                        <option value="_66_ส่งผรม.เครื่องเย็น" ${status === '_66_ส่งผรม.เครื่องเย็น' ? 'selected':''}>_66_ส่งผรม.เครื่องเย็น</option>
+                        <option value="_67_พักงานรออะไหล่เครื่องเย็น" ${status === '_67_พักงานรออะไหล่เครื่องเย็น' ? 'selected':''}>_67_พักงานรออะไหล่เครื่องเย็น</option>
+                        <option value="_75_รอตรวจรับงาน" class="font-bold text-emerald-600">✅ งานเสร็จแล้ว (ส่งให้สาขาตรวจรับ)</option>
+                    `;
+                    if (!status.startsWith("_6") && !status.startsWith("_7")) {
+                        coolOptions = `<option value="${status}" selected>-- เลือกสถานะช่าง --</option>` + coolOptions;
+                    }
+
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">อัปเดตช่างเข้างาน ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">ระบุวันที่ช่างเข้าดำเนินการ และอัปเดตสถานะหน้างาน</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-slate-200'} rounded-2xl p-6 shadow-sm space-y-5">
+                            <div class="bg-sky-50/50 border border-sky-100 p-5 rounded-xl">
+                                <label class="block text-[12px] font-bold text-sky-800 mb-2 uppercase tracking-wide"><i class="fa-regular fa-calendar-check mr-1.5"></i> วันที่เข้าดำเนินการ (dd/mm/yyyy)</label>
+                                <input type="date" id="input-entry-date" value="${existingEntry}" class="w-full border border-sky-200 rounded-xl p-3.5 text-[14px] focus:ring-sky-500 focus:border-sky-500 outline-none bg-white shadow-sm font-bold text-slate-700">
+                            </div>
+
+                            <div>
+                                <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">อัปเดตสถานะปัจจุบันของช่าง</label>
+                                <select id="sub-status" class="w-full border border-slate-200 rounded-xl p-3.5 text-[13px] focus:ring-sky-500 focus:border-sky-500 bg-slate-50">
+                                    ${group === 'งานเครื่องเย็น' ? coolOptions : structOptions}
+                                </select>
+                            </div>
+
+                            <button onclick="confirmSubmitTab('UPDATE_ENTRY', 'อัปเดตการเข้างาน')" class="w-full bg-sky-600 text-white font-bold py-3.5 rounded-xl hover:bg-sky-700 text-[14px] shadow-md transition-colors mt-2">บันทึกข้อมูลและสถานะ</button>
+                        </div>
+                        ${buildSkipButton('STEP4', tabId)}
+                    `;
+                }
+            }
+            // --- STEP 5 ---
+            else if (tabId === 'step_5') {
+                const isSkipped = checkIsSkipped('STEP5');
+                const isDone = isSkipped || status === "งานเสร็จแล้ว";
+
+                if (isDone && !isEditMode) {
+                    const content = isSkipped ? 
+                        `<div class="text-slate-500 font-bold"><i class="fa-solid fa-forward-step mr-2"></i>ขั้นตอนนี้ถูกข้ามไปแล้ว</div>` :
+                        `
+                        <div class="text-center py-4">
+                            <div class="h-16 w-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-3xl mb-3"><i class="fa-solid fa-clipboard-check"></i></div>
+                            <h5 class="font-bold text-slate-800 text-[16px]">งานนี้ผ่านการตรวจรับเรียบร้อยแล้ว</h5>
+                        </div>
+                        `;
+                    html = buildSummaryCard("ตรวจรับงาน", content, tabId);
+                } else {
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">ตรวจสอบและตรวจรับงาน ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">ช่างแจ้งว่างานเสร็จแล้ว กรุณาตรวจสอบและอนุมัติปิดงาน</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-slate-200'} rounded-2xl p-8 text-center shadow-sm">
+                            <div class="h-20 w-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-4xl mb-6 shadow-sm"><i class="fa-solid fa-clipboard-check"></i></div>
+                            <h5 class="font-bold text-emerald-800 text-[18px] mb-3">คุณตรวจสอบหน้างานเรียบร้อยแล้วใช่หรือไม่?</h5>
+                            <p class="text-[13px] text-slate-500 px-4 mb-5">ระบุความคิดเห็นด้านล่างก่อนกดยืนยัน หรือตีกลับให้แก้ไข</p>
+
+                            <div class="text-left mb-6">
+                                <label class="block text-[12px] font-bold text-slate-700 mb-2 uppercase tracking-wide">ความคิดเห็น / รายละเอียดการตรวจรับ</label>
+                                <textarea id="action-remark-5" rows="3" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" placeholder="พิมพ์ความคิดเห็น หรือจุดที่ต้องแก้ไข..."></textarea>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <button onclick="confirmSubmitTab('งานเสร็จแล้ว', 'ยืนยันการตรวจรับงาน')" class="w-full bg-emerald-500 text-white font-bold py-4 rounded-xl hover:bg-emerald-600 text-[15px] shadow-md transition-transform transform active:scale-95">✅ ยืนยันการตรวจรับงาน (ปิดงาน)</button>
+                                <button onclick="confirmSubmitTab('REJECT_INSPECT', 'ตีกลับให้แก้ไขใหม่')" class="w-full bg-white border-2 border-rose-200 text-rose-500 font-bold py-3 rounded-xl hover:bg-rose-50 text-[13px] transition-colors">❌ ไม่ผ่าน (ตีกลับให้ช่างแก้ไขใหม่)</button>
+                            </div>
+                        </div>
+                        ${buildSkipButton('STEP5', tabId)}
+                    `;
+                }
+            }
+            // --- STEP 6 ---
+            else if (tabId === 'step_6') {
+                let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+                let completeDate = datesObj.completeDate || "";
+                
+                const isDone = completeDate !== "" && status === "งานเสร็จแล้ว";
+
+                if (isDone && !isEditMode) {
+                    const content = `
+                        <div class="space-y-2">
+                            <p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">วันที่ปิดงานสมบูรณ์</p>
+                            <p class="text-[15px] font-bold text-slate-800"><i class="fa-regular fa-calendar-check mr-2 text-emerald-500"></i>${completeDate}</p>
+                        </div>
+                    `;
+                    html = buildSummaryCard("ปิดงานสมบูรณ์", content, tabId);
+                } else {
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-slate-800 text-[20px] mb-1">ปิดงานสมบูรณ์ ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">งานนี้ได้รับการตรวจรับและปิดเรียบร้อยแล้ว</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-emerald-200'} rounded-2xl p-6 shadow-sm">
+                            <div class="flex flex-col items-center justify-center py-6 mb-4 border-b border-slate-100">
+                                <div class="h-16 w-16 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-3xl mb-3"><i class="fa-solid fa-check"></i></div>
+                                <h5 class="font-bold text-emerald-700 text-[16px]">สถานะ: งานเสร็จแล้ว</h5>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[12px] font-bold text-slate-500 mb-2 uppercase tracking-wide">อัปเดตวันที่งานเสร็จสมบูรณ์</label>
+                                <input type="date" id="input-final-date" value="${completeDate}" class="w-full border border-slate-200 rounded-xl p-3.5 text-[14px] focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-slate-50 font-bold text-slate-700 mb-4">
+                                <button onclick="confirmSubmitTab('UPDATE_FINAL_DATE', 'อัปเดตวันที่ปิดงาน')" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl hover:bg-slate-700 text-[14px] shadow-md transition-colors">บันทึกการแก้ไขวันที่</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            // --- CANCEL ---
+            else if (tabId === 'cancel_task') {
+                let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+                let cancelDate = datesObj.cancelDate || "";
+                
+                const isDone = status === "งานยกเลิก";
+
+                if (isDone && !isEditMode) {
+                    const content = `
+                        <div class="space-y-4 text-[13px]">
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">วันที่ยกเลิก</p><p class="font-bold text-slate-800">${cancelDate || '-'}</p></div>
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase mb-1">เหตุผล</p><p class="font-medium text-rose-600 bg-white p-2 rounded-lg border border-emerald-100">${task.wfCancelReason || '-'}</p></div>
+                        </div>
+                    `;
+                    const cancelCardHtml = buildSummaryCard("งานถูกยกเลิกแล้ว", content, tabId).replace(/emerald/g, 'rose').replace(/fa-check-circle/g, 'fa-ban');
+                    html = cancelCardHtml;
+                } else {
+                    html = `
+                        <div class="mb-6">
+                            <h4 class="font-bold text-rose-600 text-[20px] mb-1">ยกเลิกงาน ${isEditMode ? '<span class="text-amber-500 text-[14px] ml-2">(โหมดแก้ไข)</span>' : ''}</h4>
+                            <p class="text-[13px] text-slate-500">การยกเลิกงานจะทำให้กระบวนการทั้งหมดหยุดลง</p>
+                        </div>
+                        <div class="bg-white border ${isEditMode ? 'border-amber-300 ring-4 ring-amber-50' : 'border-rose-200'} rounded-2xl p-6 shadow-sm">
+                            <div class="bg-rose-50/50 p-5 rounded-xl border border-rose-100 mb-5">
+                                <label class="block text-[12px] font-bold text-rose-700 mb-2 uppercase tracking-wide">วันที่ยกเลิก</label>
+                                <input type="date" id="cancel-date" value="${cancelDate}" class="w-full border border-rose-200 rounded-xl p-3.5 text-[14px] outline-none mb-4 focus:ring-rose-500 bg-white font-bold text-slate-700 shadow-sm">
+                                
+                                <label class="block text-[12px] font-bold text-rose-700 mb-2 uppercase tracking-wide">เหตุผลที่ยกเลิก</label>
+                                <select id="action-remark" class="w-full border border-rose-200 rounded-xl p-3.5 text-[14px] outline-none mb-3 focus:ring-rose-500 bg-white shadow-sm font-medium text-slate-700">
+                                    <option value="เปิดงานผิด" ${task.wfCancelReason === 'เปิดงานผิด' ? 'selected':''}>เปิดงานผิด</option>
+                                    <option value="เปิดงานซ้ำ" ${task.wfCancelReason === 'เปิดงานซ้ำ' ? 'selected':''}>เปิดงานซ้ำ</option>
+                                    <option value="ไม่เสียจริง" ${task.wfCancelReason === 'ไม่เสียจริง' ? 'selected':''}>ไม่เสียจริง</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <button onclick="confirmSubmitTab('งานยกเลิก', 'ยืนยันการยกเลิกงาน')" class="w-full bg-rose-500 text-white font-bold py-3.5 rounded-xl text-[14px] shadow-md hover:bg-rose-600 transition-colors">ยืนยันการยกเลิกงานอย่างเป็นทางการ</button>
+                        </div>
+                    `;
+                }
+            }
+            // --- SLA OVERRIDE (79) ---
+            else if (tabId === 'sla_override') {
+                let datesObj = {}; try{ datesObj = JSON.parse(task.wfDates); } catch(e){}
+                let extendedDate = datesObj.extendedDueDate || "";
+                
+                // ดึงเหตุผลที่คนขอขยายเวลาไว้ เพื่อแสดงให้ผู้อนุมัติเห็น
+                let reqReason = "-";
+                try {
+                    const logs = JSON.parse(task.wfLog);
+                    const reqLogs = logs.filter(l => l.action.includes('ขออนุมัติยืดเวลา SLA'));
+                    if(reqLogs.length > 0) reqReason = reqLogs[reqLogs.length - 1].remark || "-";
+                } catch(e){}
+                
+                let statusOptions = `
+                    <option value="_00_รอจ่ายงาน">_00_รอจ่ายงาน</option>
+                    <option value="_20_รอพิจารณาการทำงาน" selected>_20_รอพิจารณาการทำงาน</option>
+                    <option value="_31_จ่ายซัพT1รอเสนอราคา">_31_จ่ายซัพT1รอเสนอราคา</option>
+                    <option value="_41_รอพิจารณาราคา">_41_รอพิจารณาราคา</option>
+                    <option value="_60_ส่งผู้รับเหมาเข้างานซ่อม">_60_ส่งผู้รับเหมาเข้างานซ่อม</option>
+                    <option value="_66_ส่งผรม.เครื่องเย็น">_66_ส่งผรม.เครื่องเย็น</option>
+                    <option value="_67_พักงานรออะไหล่เครื่องเย็น">_67_พักงานรออะไหล่เครื่องเย็น</option>
+                    <option value="_75_รอตรวจรับงาน">_75_รอตรวจรับงาน</option>
+                `;
+
+                html = `
+                    <div class="mb-6">
+                        <h4 class="font-bold text-amber-600 text-[20px] mb-1">พิจารณาคำขอขยายเวลา SLA</h4>
+                        <p class="text-[13px] text-slate-500">ตรวจสอบเหตุผล ระบุวันกำหนดเสร็จใหม่ และอนุมัติ/ไม่อนุมัติ</p>
+                    </div>
+                    <div class="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm">
+                        <div class="bg-amber-50/50 p-5 rounded-xl border border-amber-100 mb-5">
+                            
+                            <label class="block text-[12px] font-bold text-amber-700 mb-1 uppercase tracking-wide">เหตุผลที่ขอขยายเวลา</label>
+                            <div class="mb-4 font-medium text-slate-700 text-[13px] px-3 py-2 bg-white rounded-lg border border-amber-200/50 leading-relaxed">${reqReason}</div>
+
+                            <label class="block text-[12px] font-bold text-amber-700 mb-2 uppercase tracking-wide">วันที่กำหนดเสร็จเดิม</label>
+                            <div class="mb-4 font-bold text-slate-600 text-[14px] px-3 py-2 bg-slate-100 rounded-lg inline-block">${task.dueDate || '-'}</div>
+
+                            <label class="block text-[12px] font-bold text-amber-700 mb-2 uppercase tracking-wide">ระบุวันที่กำหนดเสร็จ (ใหม่)</label>
+                            <input type="date" id="new-sla-date" value="${extendedDate}" class="w-full border border-amber-200 rounded-xl p-3 text-[14px] outline-none focus:ring-amber-500 bg-white font-bold text-amber-700 shadow-sm mb-4">
+                            
+                            <label class="block text-[12px] font-bold text-amber-700 mb-2 uppercase tracking-wide">สถานะงานหลังจากพิจารณา</label>
+                            <select id="sla-after-status" class="w-full border border-amber-200 rounded-xl p-3 text-[13px] outline-none focus:ring-amber-500 bg-white shadow-sm mb-4">
+                                ${statusOptions}
+                            </select>
+
+                            <label class="block text-[12px] font-bold text-amber-700 mb-2 uppercase tracking-wide">ความคิดเห็น / เหตุผลจากผู้อนุมัติ</label>
+                            <textarea id="sla-approve-remark" rows="2" class="w-full border border-amber-200 rounded-xl p-3 text-[13px] outline-none focus:ring-amber-500 bg-white shadow-sm" placeholder="ระบุเหตุผล หรือเงื่อนไขเพิ่มเติม..."></textarea>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button onclick="confirmSlaApproval('REJECT')" class="w-full bg-white border border-rose-300 text-rose-600 font-bold py-3.5 rounded-xl text-[14px] hover:bg-rose-50 transition-colors">ไม่อนุมัติ (กลับไปใช้ SLA เดิม)</button>
+                            <button onclick="confirmSlaApproval('APPROVE')" class="w-full bg-amber-500 text-white font-bold py-3.5 rounded-xl text-[14px] shadow-md hover:bg-amber-600 transition-colors">อนุมัติวันครบกำหนดใหม่</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            ws.innerHTML = html;
+        }
+
+        // --- Render ตัวเลือกอื่นๆ (จ่ายงานด่วนจากทุกสถานะ) ---
+        window.renderOtherActionForm = function() {
+            const action = document.getElementById('other-action-select').value;
+            const df = document.getElementById('other-action-form');
+            
+            if(!action) { df.classList.add('hidden'); return; }
+            df.classList.remove('hidden');
+
+            if (action === "ASSIGN") {
+                if(currentModalTask.workGroup === "งานโครงสร้าง") {
+                    df.innerHTML = `
+                        <label class="block text-[11px] font-bold text-slate-500 mb-2">เลือกผู้รับเหมา</label>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select id="sel-prov-other" class="w-full border border-slate-200 rounded-lg p-2 text-[12px] outline-none" onchange="filterStructVendorsOther()"><option value="">-- จังหวัด --</option>${[...new Set(structVendors.map(v=>v.province))].map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+                            <select id="sel-type-other" class="w-full border border-slate-200 rounded-lg p-2 text-[12px] outline-none" onchange="filterStructVendorsOther()"><option value="">-- ประเภท --</option>${[...new Set(structVendors.map(v=>v.workType))].map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+                        </div>
+                        <select id="sel-vendor-other" class="w-full border border-indigo-200 rounded-lg p-2.5 text-[13px] outline-none font-bold text-indigo-700 mb-3"><option value="">-- รายชื่อ Vendor --</option></select>
+                        <label class="block text-[11px] font-bold text-slate-500 mb-2">ประเภทการจ่ายงาน</label>
+                        <select id="sel-t-type-other" class="w-full border border-slate-200 rounded-lg p-2.5 text-[13px] outline-none mb-3">
+                            <option value="_31_จ่ายซัพT1รอเสนอราคา">T1 - รอเสนอราคา</option>
+                            <option value="_32_จ่ายซัพT2รอเสนอราคา">T2 - รอเสนอราคา</option>
+                            <option value="_33_จ่ายซัพT3รอเสนอราคา">T3 - รอเสนอราคา</option>
+                            <option value="_34_จ่าย Inspector">Inspector</option>
+                        </select>
+                        <button onclick="confirmSubmitTab('ASSIGN_STRUCT_OTHER', 'ข้ามมาจ่ายงานให้ผู้รับเหมา')" class="w-full bg-[#3b5947] text-white font-bold py-2.5 rounded-lg text-[13px] shadow-sm hover:bg-[#2b4435] transition-colors">ยืนยันจ่ายงานทันที</button>
+                    `;
+                    setTimeout(filterStructVendorsOther, 100);
+                } else {
+                    df.innerHTML = `<div id="cooling-loader-other" class="text-center py-4 text-indigo-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br><span class="text-sm">กำลังโหลด...</span></div>`;
+                    if (typeof google !== 'undefined') {
+                        google.script.run.withSuccessHandler(res => {
+                            if(res.success) {
+                                document.getElementById('cooling-loader-other').outerHTML = `
+                                    <label class="block text-[11px] font-bold text-slate-500 mb-2">เลือกช่างประจำสาขา</label>
+                                    <select id="sel-vendor-other" class="w-full border border-indigo-200 rounded-lg p-2.5 text-[13px] outline-none font-bold text-indigo-700 mb-3"><option value="${res.pm}">PM: ${res.pm}</option><option value="${res.turnkey}">Turnkey: ${res.turnkey}</option></select>
+                                    <label class="block text-[11px] font-bold text-slate-500 mb-2">ประเภทการจ่ายงาน</label>
+                                    <select id="sel-t-type-other" class="w-full border border-slate-200 rounded-lg p-2.5 text-[13px] outline-none mb-3">
+                                        <option value="_31_จ่ายซัพT1รอเสนอราคา">T1 - รอเสนอราคา</option>
+                                        <option value="_32_จ่ายซัพT2รอเสนอราคา">T2 - รอเสนอราคา</option>
+                                        <option value="_33_จ่ายซัพT3รอเสนอราคา">T3 - รอเสนอราคา</option>
+                                        <option value="_34_จ่าย Inspector">Inspector</option>
+                                    </select>
+                                    <button onclick="confirmSubmitTab('ASSIGN_COOL_OTHER', 'ข้ามมาจ่ายงานเครื่องเย็น')" class="w-full bg-[#3b5947] text-white font-bold py-2.5 rounded-lg text-[13px] shadow-sm hover:bg-[#2b4435] transition-colors">ยืนยันจ่ายงานทันที</button>
+                                `;
+                            }
+                        }).getCoolingVendors(currentModalTask.branchCode);
+                    }
+                }
+            }
+            else if (action === "_20_รอพิจารณาการทำงาน" || action === "_00_รอจ่ายงาน" || action === "_75_รอตรวจรับงาน") {
+                df.innerHTML = `
+                    <label class="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">รายละเอียด / สาเหตุที่เปลี่ยนสถานะ</label>
+                    <textarea id="action-remark" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-[13px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow bg-white" placeholder="พิมพ์รายละเอียดที่นี่..."></textarea>
+                    <button onclick="confirmSubmitTab('${action}', 'เปลี่ยนสถานะงานฉุกเฉิน')" class="mt-3 w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-[13px] shadow-sm hover:bg-slate-700 transition-colors">ยืนยันบังคับเปลี่ยนสถานะ</button>
+                `;
+            } 
+            else if (action === "งานยกเลิก") {
+                df.innerHTML = `
+                    <label class="block text-[11px] font-bold text-rose-600 mb-1.5 uppercase tracking-wide">วันที่ยกเลิก</label>
+                    <input type="date" id="cancel-date" class="w-full border border-rose-200 rounded-lg p-2.5 text-[13px] outline-none mb-3 focus:ring-rose-500 bg-white">
+                    
+                    <label class="block text-[11px] font-bold text-rose-600 mb-1.5 uppercase tracking-wide">เหตุผลที่ยกเลิก</label>
+                    <select id="action-remark" class="w-full border border-rose-200 rounded-lg p-2.5 text-[13px] outline-none mb-3 focus:ring-rose-500 bg-white">
+                        <option value="เปิดงานผิด">เปิดงานผิด</option>
+                        <option value="เปิดงานซ้ำ">เปิดงานซ้ำ</option>
+                        <option value="ไม่เสียจริง">ไม่เสียจริง</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    <button onclick="confirmSubmitTab('งานยกเลิก', 'ยกเลิกงาน')" class="w-full bg-rose-500 text-white font-bold py-2.5 rounded-xl text-[13px] shadow-sm hover:bg-rose-600 transition-colors">ยืนยันการยกเลิก</button>
+                `;
+            }
+        }
+
+        window.filterStructVendorsOther = function() {
+            const p = document.getElementById('sel-prov-other') ? document.getElementById('sel-prov-other').value : '';
+            const t = document.getElementById('sel-type-other') ? document.getElementById('sel-type-other').value : '';
+            const selV = document.getElementById('sel-vendor-other');
+            if(!selV) return;
+            const filtered = structVendors.filter(v => (p==="" || v.province===p) && (t==="" || v.workType===t));
+            let options = `<option value="">-- รายชื่อ Vendor --</option>`;
+            filtered.forEach(v => { options += `<option value="${v.vendorName}">${v.vendorCode} - ${v.vendorName}</option>`; });
+            selV.innerHTML = options;
+        }
+
+
+        window.confirmSlaApproval = function(action) {
+            const newDate = document.getElementById('new-sla-date').value;
+            const afterStatus = document.getElementById('sla-after-status').value;
+            const remark = document.getElementById('sla-approve-remark').value;
+            
+            if(action === 'APPROVE' && !newDate) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุวันกำหนดเสร็จใหม่', customClass:{popup:'!rounded-2xl font-prompt'}});
+            
+            let titleText = action === 'APPROVE' ? 'ยืนยันอนุมัติการเปลี่ยน SLA?' : 'ไม่อนุมัติการขยายเวลา SLA?';
+            let descText = action === 'APPROVE' ? 'ระบบจะนำวันที่ใหม่ไปใช้ในการคำนวณ SLA แทนวันเดิม' : 'งานจะกลับไปใช้สถานะที่ระบุ โดยใช้กำหนดเสร็จเดิม';
+
+            Swal.fire({
+                title: titleText,
+                text: descText,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                customClass: { popup: '!rounded-3xl font-prompt' }
+            }).then(res => {
+                if(res.isConfirmed) {
+                    let payload = {};
+                    if(action === 'APPROVE') {
+                        payload = { 
+                            rowId: currentModalTask.rowId, 
+                            status: afterStatus, 
+                            updates: { dates: { extendedDueDate: newDate } },
+                            newLogEntry: { 
+                                date: new Date().toLocaleString('th-TH'), 
+                                user: currentUser, 
+                                action: `[อนุมัติยืดเวลา SLA]`, 
+                                remark: `เปลี่ยนวันกำหนดเสร็จเป็น: ${newDate} | ความเห็น: ${remark}` 
+                            }
+                        };
+                    } else {
+                        payload = { 
+                            rowId: currentModalTask.rowId, 
+                            status: afterStatus,
+                            newLogEntry: { 
+                                date: new Date().toLocaleString('th-TH'), 
+                                user: currentUser, 
+                                action: `[ไม่อนุมัติยืดเวลา SLA]`, 
+                                remark: `ความเห็น: ${remark}` 
+                            }
+                        };
+                    }
+
+                    const overlay = document.getElementById('modal-loading-overlay');
+                    overlay.classList.remove('hidden');
+
+                    if (typeof google === 'undefined') {
+                        setTimeout(() => { overlay.classList.add('hidden'); loadData(true); }, 1000);
+                        return;
+                    }
+
+                    google.script.run.withSuccessHandler(res => {
+                        overlay.classList.add('hidden');
+                        if(res.success) loadData(true);
+                    }).updateTaskWorkflow(payload);
+                }
+            });
+        }
+
+        // ==========================================
+        // 4. SUBMIT ACTION LOGIC WITH CONFIRMATION
+        // ==========================================
+        window.confirmSubmitTab = function(actionType, actionTitle) {
+            const customPopupHtml = `
+                <div class="font-prompt px-2 pb-2">
+                    <div class="mx-auto flex items-center justify-center h-[80px] w-[80px] rounded-full border-[2px] border-indigo-200 text-indigo-400 text-[45px] mb-4 font-light">
+                       ?
+                    </div>
+                    
+                    <h2 class="text-[24px] font-bold text-slate-800 mb-6 text-center">ยืนยันการบันทึก?</h2>
+
+                    <div class="border border-slate-100 bg-slate-50 rounded-[14px] p-5 text-left mb-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-slate-500 text-[13px]">Task No:</span>
+                            <span class="font-bold text-slate-800 text-[14px]">${currentModalTask.taskNo}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-slate-500 text-[13px]">Action:</span>
+                            <span class="font-bold text-indigo-600 text-[13px]">${actionTitle} ${isEditMode ? '<span class="text-amber-500">(แก้ไข)</span>' : ''}</span>
+                        </div>
+                        ${isEditMode ? `
+                        <div class="flex justify-between items-center mb-3 text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                            <span class="font-bold text-[12px]">เหตุผลการแก้ไข:</span>
+                            <span class="font-medium text-[11px] truncate max-w-[150px]">${currentEditReason}</span>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="border-t border-dashed border-slate-200 pt-4 mt-2 flex justify-between items-center">
+                            <span class="text-slate-500 text-[12px]">Recorded By:</span>
+                            <div class="text-[11px] text-slate-600 font-bold flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                                <i class="fa-solid fa-user text-slate-400"></i> ${currentUser || 'ไม่ระบุ'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                html: customPopupHtml,
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                buttonsStyling: false, 
+                customClass: {
+                    popup: '!rounded-3xl !p-6 !border-0 shadow-2xl w-auto min-w-[340px] sm:min-w-[400px]',
+                    actions: 'flex gap-3 justify-center w-full mt-2',
+                    confirmButton: 'flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors text-[14px] shadow-md',
+                    cancelButton: 'flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold py-3.5 rounded-xl transition-colors text-[14px] shadow-sm'
+                },
+                showCloseButton: false,
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executeSubmitTab(actionType, actionTitle);
+                }
+            });
+        }
+
+        function executeSubmitTab(actionType, actionTitle) {
+            let payload = { rowId: currentModalTask.rowId, status: null, newLogEntry: null, updates: {} };
+            const nowStr = new Date().toLocaleString('th-TH');
+            
+            // ฟังก์ชันตัวช่วยสำหรับสร้าง Log ให้รองรับเรื่อง Edit Reason
+            const createLog = (actionName, remark = "") => {
+                let finalActionName = isEditMode ? `[แก้ไข] ${actionName}` : actionName;
+                let finalRemark = remark;
+                if (isEditMode && currentEditReason) {
+                    finalRemark = `เหตุผล: ${currentEditReason}${remark ? ' | ' + remark : ''}`;
+                }
+                return { date: nowStr, user: currentUser, action: finalActionName, remark: finalRemark };
+            };
+
+            // Logic Mapping based on Tab Inputs
+            if(actionType === "STEP1") {
+                const stat = document.getElementById('action-select-1').value;
+                const rem = document.getElementById('action-remark-1').value;
+                payload.status = stat;
+                payload.newLogEntry = createLog(`เปลี่ยนสถานะเป็น ${stat}`, rem);
+            }
+            else if(actionType === "งานยกเลิก") {
+                const cDate = document.getElementById('cancel-date').value;
+                const rem = document.getElementById('action-remark').value;
+                if(!cDate) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุวันที่ยกเลิก', customClass:{popup:'!rounded-2xl font-prompt'}});
+                payload.status = "งานยกเลิก";
+                payload.updates.dates = { cancelDate: cDate };
+                payload.updates.cancelReason = rem; 
+                payload.newLogEntry = createLog(`ยกเลิกงาน (วันที่ ${cDate})`, rem);
+            }
+            else if(actionType.startsWith("ASSIGN")) {
+                // Support both sidebar Step 2 and Universal Dropdown
+                const isOther = actionType.includes('_OTHER');
+                const vendorId = isOther ? 'sel-vendor-other' : 'sel-vendor';
+                const typeId = isOther ? 'sel-t-type-other' : 'sel-t-type';
+                
+                const vendor = document.getElementById(vendorId).value;
+                const tType = document.getElementById(typeId).value;
+
+                if(!vendor) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาเลือกผู้รับเหมา', customClass:{popup:'!rounded-2xl font-prompt'}});
+                
+                payload.status = currentModalTask.workGroup === "งานโครงสร้าง" ? "_41_รอพิจารณาราคา" : tType; 
+                payload.updates.vendor = vendor;
+                payload.updates.vendorType = tType;
+                payload.newLogEntry = createLog(`จ่ายงานให้ ${vendor}`, `ประเภท: ${tType}`);
+            }
+            else if(actionType === "REJECT_PRICE") {
+                payload.status = "_00_รอจ่ายงาน"; // ตีกลับไปรอจ่ายงานใหม่
+                payload.newLogEntry = createLog("ไม่อนุมัติราคาประเมิน", "ตีกลับให้เจรจาใหม่");
+            }
+            else if(actionType === "_50_ส่งเปิดPOก่อนเข้างาน") {
+                const po = document.getElementById('input-po').value;
+                if(!po) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุเลข PO', customClass:{popup:'!rounded-2xl font-prompt'}});
+                
+                payload.status = "_50_ส่งเปิดPOก่อนเข้างาน";
+                payload.updates.po = po;
+                
+                payload.updates.cost = {
+                    mat: document.getElementById('cost-mat').value || 0,
+                    labor: document.getElementById('cost-labor').value || 0,
+                    travel: document.getElementById('cost-travel').value || 0,
+                    total: document.getElementById('cost-total').textContent.replace(/,/g, '') || 0
+                };
+
+                payload.newLogEntry = createLog(`อนุมัติราคาและเปิด PO`, `เลข PO: ${po}`);
+            }
+            else if(actionType === "UPDATE_ENTRY") {
+                const eDate = document.getElementById('input-entry-date').value;
+                const statObj = document.getElementById('sub-status');
+                const newStat = statObj ? statObj.value : currentModalTask.wfStatus;
+                if(!eDate) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุวันเข้างาน', customClass:{popup:'!rounded-2xl font-prompt'}});
+                payload.status = newStat;
+                payload.updates.dates = { entryDate: eDate };
+                payload.newLogEntry = createLog(`อัปเดตวันเข้างาน: ${eDate}`, `สถานะ: ${newStat}`);
+            }
+            else if(actionType === "งานเสร็จแล้ว") {
+                const rem = document.getElementById('action-remark-5') ? document.getElementById('action-remark-5').value : '';
+                payload.status = "งานเสร็จแล้ว";
+                payload.newLogEntry = createLog("ยืนยันการตรวจรับงาน", `เสร็จสมบูรณ์ | ความคิดเห็น: ${rem}`);
+                payload.updates.dates = { completeDate: new Date().toISOString().split('T')[0] }; 
+            }
+            else if(actionType === "REJECT_INSPECT") {
+                const rem = document.getElementById('action-remark-5') ? document.getElementById('action-remark-5').value : '';
+                if(!rem && !isEditMode) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุความคิดเห็นที่ให้ช่างแก้ไข', customClass:{popup:'!rounded-2xl font-prompt'}});
+                
+                payload.status = currentModalTask.workGroup === 'งานโครงสร้าง' ? "_60_ส่งผู้รับเหมาเข้างานซ่อม" : "_66_ส่งผรม.เครื่องเย็น";
+                payload.newLogEntry = createLog("ตรวจรับงานไม่ผ่าน", `ตีกลับให้ช่างแก้ไข | ความคิดเห็น: ${rem}`);
+            }
+            else if(actionType === "UPDATE_FINAL_DATE") {
+                const fDate = document.getElementById('input-final-date').value;
+                if(!fDate) return Swal.fire({icon: 'warning', title:'แจ้งเตือน', text:'กรุณาระบุวันที่', customClass:{popup:'!rounded-2xl font-prompt'}});
+                payload.updates.dates = { completeDate: fDate }; // Only complete tab uses this now
+                payload.newLogEntry = createLog(`อัปเดตวันที่ปิดงาน: ${fDate}`);
+            }
+            // Universal Fallbacks
+            else if(actionType === "_00_รอจ่ายงาน" || actionType === "_20_รอพิจารณาการทำงาน" || actionType === "_21_ส่งทีมเข้าสำรวจ" || actionType === "_75_รอตรวจรับงาน") {
+                const rem = document.getElementById('action-remark') ? document.getElementById('action-remark').value : '';
+                payload.status = actionType;
+                payload.newLogEntry = createLog(`เปลี่ยนสถานะฉุกเฉินเป็น ${actionType}`, rem);
+            }
+
+            // แสดงหน้าจอโหลดใน Popup แบบวิ่งเปอร์เซ็นต์
+            const overlay = document.getElementById('modal-loading-overlay');
+            const progress = document.getElementById('modal-save-progress');
+            const statusText = document.getElementById('modal-save-text');
+            overlay.classList.remove('hidden');
+            
+            let pVal = 0;
+            const progressInterval = setInterval(() => {
+                pVal += Math.random() * 12;
+                if(pVal > 90) pVal = 90;
+                progress.style.width = `${pVal}%`;
+                if(pVal > 30) statusText.textContent = "กำลังอัปเดตฐานข้อมูล...";
+                if(pVal > 60) statusText.textContent = "กำลังบันทึกประวัติลงคอลัมน์แยก...";
+            }, 300);
+
+            if (typeof google === 'undefined') {
+                setTimeout(() => {
+                    clearInterval(progressInterval);
+                    progress.style.width = '100%';
+                    statusText.textContent = "เสร็จสิ้น!";
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        isEditMode = false;
+                        currentEditReason = "";
+                        // Mock update for front-end testing
+                        const taskIndex = allTasks.findIndex(t => t.rowId === currentModalTask.rowId);
+                        if(taskIndex > -1) {
+                            if(payload.status) allTasks[taskIndex].wfStatus = payload.status;
+                            let logs = JSON.parse(allTasks[taskIndex].wfLog);
+                            logs.push(payload.newLogEntry);
+                            allTasks[taskIndex].wfLog = JSON.stringify(logs);
+                            if(payload.updates && payload.updates.dates) {
+                                let cd = JSON.parse(allTasks[taskIndex].wfDates);
+                                allTasks[taskIndex].wfDates = JSON.stringify({...cd, ...payload.updates.dates});
+                            }
+                            if(payload.updates && payload.updates.vendor) allTasks[taskIndex].wfVendor = payload.updates.vendor;
+                            if(payload.updates && payload.updates.vendorType) allTasks[taskIndex].wfVendorType = payload.updates.vendorType;
+                            if(payload.updates && payload.updates.po) allTasks[taskIndex].wfPO = payload.updates.po;
+                            if(payload.updates && payload.updates.cost) allTasks[taskIndex].wfCost = JSON.stringify(payload.updates.cost);
+                        }
+                        loadData(true); // รีเฟรชเงียบ
+                    }, 500);
+                }, 1500);
+                return;
+            }
+
+            // Call Backend
+            google.script.run.withSuccessHandler(res => {
+                clearInterval(progressInterval);
+                progress.style.width = '100%';
+                statusText.textContent = "เสร็จสิ้น!";
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    isEditMode = false;
+                    currentEditReason = "";
+                    if(res.success) {
+                        loadData(true); // รีเฟรชข้อมูลและหน้าจอเงียบๆ
+                    } else { 
+                        Swal.fire({icon: 'error', title:'ผิดพลาด', text:res.message, customClass:{popup:'!rounded-2xl font-prompt'}}); 
+                    }
+                }, 500);
+            }).updateTaskWorkflow(payload);
+        }
+
+    </script>
+</body>
+</html>

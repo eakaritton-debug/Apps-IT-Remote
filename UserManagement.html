@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f9fafb;
+        }
+        /* Modal transitions */
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease, opacity 0.3s ease; transform: translateY(-20px) scale(0.95); opacity: 0; }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal-overlay.open .modal-content { transform: translateY(0) scale(1); opacity: 1; }
+        
+        /* Table Row Hover */
+        tr:hover td { background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
+            <p class="text-sm text-gray-500">Manage system access, employee accounts, and departments</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 text-sm hidden md:block">
+                <span class="text-xs text-gray-400 font-bold block">Current User</span>
+                <span id="display-user" class="font-medium text-gray-700">Loading...</span>
+            </div>
+            <button onclick="openModal('add')" class="bg-[#487648] text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-[#3a5e3a] transition-colors flex items-center gap-2 font-medium">
+                <i class="fas fa-plus"></i> Add New User
+            </button>
+        </div>
+    </div>
+
+    <!-- Toolbar: Filter & Search -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+        <!-- Department Filter -->
+        <div class="w-full md:w-auto flex items-center gap-2">
+            <div class="relative w-full md:w-56">
+                <i class="fas fa-filter absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                <select id="filterDepartment" onchange="filterUsers()" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition shadow-sm text-sm bg-white cursor-pointer appearance-none">
+                    <option value="">All Departments</option>
+                    <option value="Executive">Executive</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Sales">Sales</option>
+                    <option value="BD">BD</option>
+                    <option value="HR">HR</option>
+                    <option value="Reservation">Reservation</option>
+                    <option value="Accounting">Accounting</option>
+                </select>
+                <i class="fas fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+            </div>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative w-full md:w-80">
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="searchInput" onkeyup="filterUsers()" placeholder="Search by name, ID, username, role..." class="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition shadow-sm text-sm bg-white">
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 flex flex-col">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Employee Name</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Username</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Access</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Last Updated</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody" class="bg-white divide-y divide-gray-200">
+                    <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400 animate-pulse font-medium">Loading data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination Controls -->
+        <div id="pagination" class="bg-gray-50/80 px-6 py-4 border-t border-gray-100 flex items-center justify-between hidden">
+            <div class="text-xs text-gray-500 font-medium">
+                Showing <span id="pageStart" class="text-gray-800 font-bold">0</span> to <span id="pageEnd" class="text-gray-800 font-bold">0</span> of <span id="pageTotal" class="text-gray-800 font-bold">0</span> entries
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="changePage(-1)" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm">
+                    <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <span id="pageInfo" class="text-xs font-bold text-gray-700 px-2">1 / 1</span>
+                <button onclick="changePage(1)" id="btnNext" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="userModal" class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 invisible">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <form id="userForm">
+                <!-- Header -->
+                <div id="modalHeader" class="flex justify-between items-center p-6 border-b border-gray-100 bg-[#487648] text-white rounded-t-2xl">
+                    <h2 id="modalTitle" class="text-xl font-bold">Add New User</h2>
+                    <button type="button" onclick="closeModal('userModal')" class="text-white/80 hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <input type="hidden" id="modalMode" value="add">
+                    <input type="hidden" id="originalUsername">
+                    
+                    <!-- Row 1 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Employee Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="employeeName" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] focus:border-transparent outline-none transition" placeholder="e.g. John Doe">
+                    </div>
+                    
+                    <!-- Row 2 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Employee ID <span class="text-red-500">*</span></label>
+                        <input type="text" id="employeeID" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="e.g. EMP001">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                        <input type="tel" id="phone" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="e.g. 0812345678">
+                    </div>
+
+                    <!-- Row 3 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Gmail</label>
+                        <input type="email" id="companyGmail" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="example@gmail.com">
+                    </div>
+                    
+                    <hr class="md:col-span-2 border-gray-100 my-1">
+
+                    <!-- Row 4 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Username <span class="text-red-500">*</span></label>
+                        <input type="text" id="username" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="Login ID">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">
+                            Password <span id="passwordLabel" class="text-xs text-gray-400 font-normal ml-1">(Min 6 chars)</span>
+                        </label>
+                        <input type="password" id="newPassword" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="••••••">
+                    </div>
+
+                    <!-- Row 5: Department (Searchable Datalist) & Access Level -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Department <span class="text-red-500">*</span></label>
+                        <!-- ใช้ input คู่กับ datalist ทำให้พิมพ์ค้นหาได้ และเลือกได้ -->
+                        <input list="departments" id="department" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition" placeholder="Type to search or select...">
+                        <datalist id="departments">
+                            <option value="Executive">
+                            <option value="Commercial">
+                            <option value="Sales">
+                            <option value="BD">
+                            <option value="HR">
+                            <option value="Reservation">
+                            <option value="Accounting">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Access Level <span class="text-red-500">*</span></label>
+                        <select id="accessLevel" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#487648] outline-none transition cursor-pointer">
+                            <option value="">-- Select --</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="SALE">SALE</option>
+                            <option value="RESERVATION">RESERVATION</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex justify-end items-center p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl gap-3">
+                    <button type="button" onclick="closeModal('userModal')" class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-white hover:border-gray-300 transition">Cancel</button>
+                    <!-- Trigger validateAndSave() -->
+                    <button type="button" onclick="validateAndSave()" class="px-6 py-2.5 bg-[#487648] text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:translate-y-[-1px] transition-all flex items-center gap-2">
+                        <i class="fas fa-save"></i> Save User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+    // --- MOCK DATA FOR TESTING ---
+    if (typeof google === 'undefined') {
+        const mockUsers = [
+            { employeeName: 'Admin User', employeeID: 'EMP001', department: 'Executive', phone: '0812345678', companyGmail: 'admin@hotel.com', username: 'admin', access: 'ADMIN', recordedBy: 'System', recordedDate: '01/01/2026 00:00:00' },
+            { employeeName: 'Sale Manager', employeeID: 'EMP002', department: 'Sales', phone: '0890000000', companyGmail: 'sale@hotel.com', username: 'sale', access: 'SALE', recordedBy: 'EMP001 - Admin', recordedDate: '14/02/2026 12:00:00' },
+            { employeeName: 'HR Officer', employeeID: 'EMP003', department: 'HR', phone: '0881112222', companyGmail: 'hr@hotel.com', username: 'hrofficer', access: 'RESERVATION', recordedBy: 'EMP001 - Admin', recordedDate: '15/02/2026 09:30:00' }
+        ];
+
+        var runner = {
+            withSuccessHandler: function(cb) { this.success=cb; return this; },
+            withFailureHandler: function(cb) { this.failure=cb; return this; },
+            getCurrentUserInfo: function() { 
+                setTimeout(() => { if(this.success) this.success('EMP001 - Admin Mock'); }, 500); 
+            },
+            getUserManagementData: function() { 
+                setTimeout(() => { 
+                    if(this.success) this.success({ success: true, users: mockUsers }); 
+                }, 600); 
+            },
+            addNewUser: function(data) { 
+                setTimeout(() => { 
+                    mockUsers.push({ ...data, recordedBy: 'EMP001 - Admin Mock', recordedDate: '16/02/2026 10:00:00' });
+                    if(this.success) this.success({ success: true, message: 'User added successfully (Mock)' }); 
+                }, 1500); 
+            },
+            updateUser: function(data) { 
+                setTimeout(() => { 
+                    if(this.success) this.success({ success: true, message: 'User updated successfully (Mock)' }); 
+                }, 1500); 
+            },
+            deleteUser: function(username) { 
+                setTimeout(() => { 
+                    if(this.success) this.success({ success: true, message: 'User deleted successfully (Mock)' }); 
+                }, 1000); 
+            }
+        };
+        window.google = { script: { get run() { return Object.assign({}, runner); } } };
+    }
+    // -----------------------------------------------------------------------------
+
+    let allUsersData = [];
+    let filteredUsers = [];
+    let currentUserInfo = 'Guest';
+    
+    // Pagination Variables
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initUser();
+        loadUsers();
+    });
+
+    function initUser() {
+        google.script.run.withSuccessHandler(info => {
+            currentUserInfo = info || 'Unknown';
+            document.getElementById('display-user').innerText = currentUserInfo;
+        }).getCurrentUserInfo();
+    }
+
+    /**
+     * แปลงวันที่เป็น Timestamp สำหรับการจัดเรียง (ล่าสุดขึ้นก่อน)
+     */
+    function parseDateToTime(dateStr) {
+        if (!dateStr || dateStr === '-') return 0;
+        try {
+            if (dateStr.includes('-')) {
+                return new Date(dateStr).getTime() || 0;
+            } else {
+                const parts = dateStr.split(' ');
+                const dateParts = parts[0].split('/');
+                const timeParts = parts[1] ? parts[1].split(':') : [0,0,0];
+                return new Date(dateParts[2], dateParts[1]-1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+            }
+        } catch(e) { return 0; }
+    }
+
+    function loadUsers() {
+        google.script.run.withSuccessHandler(response => {
+            if (response.success) {
+                // จัดเรียงข้อมูลโดยเอาข้อมูลที่อัปเดตล่าสุดไว้บนสุด
+                allUsersData = response.users.sort((a, b) => {
+                    return parseDateToTime(b.recordedDate) - parseDateToTime(a.recordedDate);
+                });
+                filteredUsers = [...allUsersData];
+                currentPage = 1;
+                renderTable();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: response.message });
+            }
+        }).withFailureHandler(err => {
+            Swal.fire({ icon: 'error', title: 'Connection Error', text: err.message });
+        }).getUserManagementData();
+    }
+
+    // --- Filter & Pagination Functions ---
+    function filterUsers() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const deptFilter = document.getElementById('filterDepartment').value;
+        
+        filteredUsers = allUsersData.filter(user => {
+            const matchSearch = (user.employeeName || '').toLowerCase().includes(query) ||
+                                (user.employeeID || '').toLowerCase().includes(query) ||
+                                (user.username || '').toLowerCase().includes(query) ||
+                                (user.access || '').toLowerCase().includes(query) ||
+                                (user.companyGmail || '').toLowerCase().includes(query);
+            
+            const matchDept = !deptFilter || (user.department === deptFilter);
+
+            return matchSearch && matchDept;
+        });
+        
+        currentPage = 1; // รีเซ็ตหน้ากลับไปที่ 1 เสมอเมื่อค้นหา
+        renderTable();
+    }
+
+    function changePage(direction) {
+        currentPage += direction;
+        renderTable();
+    }
+
+    function renderTable() {
+        const tableBody = document.getElementById('userTableBody');
+        const pagination = document.getElementById('pagination');
+        tableBody.innerHTML = '';
+
+        if (filteredUsers.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-gray-400 flex flex-col items-center justify-center"><i class="fas fa-users-slash text-4xl mb-3 opacity-30"></i><span>No users found</span></td></tr>`;
+            pagination.classList.add('hidden');
+            return;
+        }
+
+        // --- คำนวณ Pagination ---
+        const totalRecords = filteredUsers.length;
+        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+        
+        if (currentPage < 1) currentPage = 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalRecords);
+        const pageData = filteredUsers.slice(startIndex, endIndex);
+
+        // อัปเดต UI ของ Pagination
+        document.getElementById('pageStart').innerText = startIndex + 1;
+        document.getElementById('pageEnd').innerText = endIndex;
+        document.getElementById('pageTotal').innerText = totalRecords;
+        document.getElementById('pageInfo').innerText = `${currentPage} / ${totalPages}`;
+        
+        document.getElementById('btnPrev').disabled = (currentPage <= 1);
+        document.getElementById('btnNext').disabled = (currentPage >= totalPages);
+        pagination.classList.remove('hidden');
+
+        // --- เรนเดอร์ข้อมูลหน้าปัจจุบัน ---
+        pageData.forEach(user => {
+            let badgeClass = 'bg-gray-100 text-gray-700';
+            if (['ADMIN', 'GM'].includes(user.access)) badgeClass = 'bg-blue-50 text-blue-700 border border-blue-100';
+            else if (user.access === 'SALE') badgeClass = 'bg-green-50 text-green-700 border border-green-100';
+            else if (user.access === 'RESERVATION') badgeClass = 'bg-purple-50 text-purple-700 border border-purple-100';
+
+            // Check if history exists
+            let recordedBy = user.recordedBy && user.recordedBy !== '-' ? `<span class="font-semibold text-gray-700">${user.recordedBy}</span>` : '<span class="text-gray-300">-</span>';
+            let recordedDate = user.recordedDate && user.recordedDate !== '-' ? `<span class="text-gray-500">${user.recordedDate}</span>` : '<span class="text-gray-300">-</span>';
+
+            const row = `
+                <tr class="transition-colors hover:bg-gray-50 group border-b border-gray-100 last:border-0">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="font-bold text-gray-800">${user.employeeName}</div>
+                        <div class="text-xs text-gray-400">${user.companyGmail || '-'}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">${user.employeeID}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm font-medium text-gray-700"><i class="fas fa-building text-gray-400 mr-1 text-xs"></i> ${user.department || '-'}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${badgeClass}">${user.access}</span>
+                    </td>
+                    <!-- History Columns -->
+                    <td class="px-6 py-4 whitespace-nowrap text-xs hidden md:table-cell">
+                        <div>${recordedBy}</div>
+                        <div>${recordedDate}</div>
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <div class="flex justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button onclick='openEditModal(${JSON.stringify(user).replace(/'/g, "&#39;")})' class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 flex items-center justify-center transition shadow-sm" title="Edit">
+                                <i class="fas fa-edit text-xs"></i>
+                            </button>
+                            <button onclick="deleteUser('${user.username}')" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-red-500 hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition shadow-sm" title="Delete">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    // --- Modal Handling ---
+    function openModal(mode) {
+        const modal = document.getElementById('userModal');
+        const title = document.getElementById('modalTitle');
+        const modalMode = document.getElementById('modalMode');
+        const form = document.getElementById('userForm');
+        
+        modalMode.value = mode;
+        form.reset();
+        
+        if (mode === 'add') {
+            title.textContent = 'Add New User';
+            document.getElementById('username').readOnly = false;
+            document.getElementById('username').classList.remove('bg-gray-100', 'cursor-not-allowed');
+            document.getElementById('passwordLabel').textContent = '(Min 6 chars)';
+        }
+        
+        modal.classList.add('open');
+    }
+
+    function openEditModal(user) {
+        openModal('edit');
+        document.getElementById('modalTitle').textContent = 'Edit User';
+        document.getElementById('originalUsername').value = user.username;
+        document.getElementById('employeeName').value = user.employeeName;
+        document.getElementById('employeeID').value = user.employeeID;
+        document.getElementById('department').value = user.department || '';
+        document.getElementById('phone').value = user.phone;
+        document.getElementById('companyGmail').value = user.companyGmail;
+        document.getElementById('username').value = user.username;
+        document.getElementById('accessLevel').value = user.access;
+        
+        document.getElementById('passwordLabel').textContent = '(Leave blank to keep current)';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('open');
+    }
+
+    // --- Validate & Save (SweetAlert2) ---
+    function validateAndSave() {
+        const mode = document.getElementById('modalMode').value;
+        const name = document.getElementById('employeeName').value.trim();
+        const id = document.getElementById('employeeID').value.trim();
+        const department = document.getElementById('department').value.trim();
+        const username = document.getElementById('username').value.trim();
+        const access = document.getElementById('accessLevel').value;
+        const password = document.getElementById('newPassword').value;
+
+        // 1. Validation Popup
+        if (!name || !id || !department || !username || !access) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Incomplete Data',
+                text: 'Please fill in Employee Name, ID, Department, Username, and Access Level.',
+                confirmButtonColor: '#487648',
+                customClass: { popup: 'rounded-2xl' }
+            });
+        }
+
+        if (mode === 'add' && (!password || password.length < 6)) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Password',
+                text: 'Password is required and must be at least 6 characters.',
+                confirmButtonColor: '#487648',
+                customClass: { popup: 'rounded-2xl' }
+            });
+        }
+
+        const userData = {
+            employeeName: name,
+            employeeID: id,
+            department: department,
+            phone: document.getElementById('phone').value.trim(),
+            companyGmail: document.getElementById('companyGmail').value.trim(),
+            username: username,
+            access: access,
+            newPassword: password,
+            originalUsername: document.getElementById('originalUsername').value
+        };
+
+        // 2. Summary Confirmation Popup
+        const summaryHtml = `
+            <div class="text-left bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm space-y-2 mb-4">
+                <div class="flex justify-between"><span class="text-gray-500">Name:</span><span class="font-bold text-gray-800">${name}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">ID:</span><span class="font-bold text-gray-800">${id}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Dept:</span><span class="font-bold text-gray-800">${department}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Access:</span><span class="font-bold text-[#487648]">${access}</span></div>
+                <div class="pt-2 border-t border-gray-200 flex justify-between items-center mt-2">
+                    <span class="text-xs text-gray-400">Recorded By:</span>
+                    <span class="text-xs font-bold text-gray-600 bg-white px-2 py-1 rounded border border-gray-100">
+                        <i class="fas fa-user-check mr-1"></i> ${currentUserInfo}
+                    </span>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500">Confirm to save this user?</p>
+        `;
+
+        Swal.fire({
+            title: 'Confirm Save?',
+            html: summaryHtml,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#487648',
+            cancelButtonColor: '#9ca3af',
+            confirmButtonText: 'Yes, Confirm',
+            cancelButtonText: 'Cancel',
+            customClass: { popup: 'rounded-2xl' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                performSave(mode, userData);
+            }
+        });
+    }
+
+    function performSave(mode, userData) {
+        // 3. Progress Bar Popup
+        let timerInterval;
+        Swal.fire({
+            title: 'Saving...',
+            html: 'Uploading data to server <b></b>%',
+            timer: 20000,
+            timerProgressBar: true,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+                const b = Swal.getHtmlContainer().querySelector('b');
+                let progress = 0;
+                timerInterval = setInterval(() => {
+                    progress += Math.floor(Math.random() * 10) + 5;
+                    if(progress > 95) progress = 99;
+                    b.textContent = progress;
+                }, 200);
+            },
+            willClose: () => { clearInterval(timerInterval); },
+            customClass: { popup: 'rounded-2xl' }
+        });
+
+        const action = mode === 'add' ? 'addNewUser' : 'updateUser';
+        
+        google.script.run.withSuccessHandler(res => {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'Success!', text: res.message, timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-2xl' } });
+                loadUsers();
+                closeModal('userModal');
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message, confirmButtonColor: '#ef4444', customClass: { popup: 'rounded-2xl' } });
+            }
+        }).withFailureHandler(err => {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        })[action](userData);
+    }
+
+    // --- Delete Function (SweetAlert2) ---
+    function deleteUser(username) {
+        Swal.fire({
+            title: 'Confirm Deletion?',
+            html: `Are you sure you want to delete user <b>${username}</b>?<br>
+                   <span class="text-xs text-red-500 mt-2 block"><i class="fas fa-exclamation-triangle"></i> Data will be backed up to DeletedUsers sheet.</span>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#9ca3af',
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            customClass: { popup: 'rounded-2xl' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Deleting...', didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-2xl' } });
+                
+                google.script.run.withSuccessHandler(res => {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'Deleted!', text: res.message, timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-2xl' } });
+                        loadUsers();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+                    }
+                }).deleteUser(username);
+            }
+        });
+    }
+</script>
+</body>
+</html>

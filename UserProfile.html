@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f0f2f5; /* Match main layout bg */
+        }
+        /* Loading Spinner */
+        #loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #487648;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* File input style */
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+        }
+        .custom-file-upload:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        /* Toast Message */
+        #toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            transform: translateY(-100px);
+            opacity: 0;
+            display: none;
+        }
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+            display: block;
+        }
+        #toast.success { background-color: #22c55e; } /* green-500 */
+        #toast.error { background-color: #ef4444; } /* red-500 */
+
+        #profilePicImg {
+             background-color: #e5e7eb; /* Background for placeholder */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Loading Overlay --><div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50" style="display: none;">
+        <div class="flex flex-col items-center">
+            <div id="loader"></div>
+            <span class="mt-3 font-medium text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Toast Message --><div id="toast">
+        <i id="toastIcon" class="fas mr-2"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Profile Card --><div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-6 md:p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Manage Profile</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Profile Picture Section --><div class="flex flex-col items-center md:border-r md:pr-6">
+                    <img id="profilePicImg"
+                         class="rounded-full h-40 w-40 object-cover border-4 border-gray-200 mb-4"
+                         src="https://placehold.co/160x160/EFEFEF/AAAAAA?text=Profile"
+                         alt="Profile Picture"
+                         onerror="this.onerror=null; this.src='https://placehold.co/160x160/EFEFEF/AAAAAA?text=Error';">
+
+                    <label for="profilePicInput" class="custom-file-upload">
+                        <i class="fas fa-camera mr-2"></i>
+                        <span>Change Photo</span>
+                    </label>
+                    <input id="profilePicInput" type="file" accept="image/png, image/jpeg, image/gif">
+                    <p class="text-xs text-gray-500 mt-2 text-center">Supported: JPG, PNG, GIF (Max 2MB)</p>
+                </div>
+
+                <!-- Profile Form Section --><div class="md:col-span-2">
+                    <form id="profileForm" class="space-y-4">
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                            <input type="text" id="username" name="username" readonly
+                                   class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none text-gray-500">
+                        </div>
+
+                        <div>
+                            <label for="employeeName" class="block text-sm font-medium text-gray-700">Employee Name</label>
+                            <input type="text" id="employeeName" name="employeeName"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#487648] focus:border-[#487648]">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="employeeID" class="block text-sm font-medium text-gray-700">Employee ID</label>
+                                <input type="text" id="employeeID" name="employeeID"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#487648] focus:border-[#487648]">
+                            </div>
+                            <div>
+                                <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                <input type="tel" id="phone" name="phone"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#487648] focus:border-[#487648]">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="companyGmail" class="block text-sm font-medium text-gray-700">Company Gmail</label>
+                            <input type="email" id="companyGmail" name="companyGmail"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#487648] focus:border-[#487648]">
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="button" id="saveButton"
+                                    class="bg-[#487648] text-white font-semibold py-2 px-6 rounded-md shadow-md hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#487648] transition duration-200">
+                                <i class="fas fa-save mr-2"></i>
+                                <span>Save Changes</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- UI Elements ---
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const toast = document.getElementById('toast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+    const profilePicImg = document.getElementById('profilePicImg');
+    const profilePicInput = document.getElementById('profilePicInput');
+    const saveButton = document.getElementById('saveButton');
+    const profileForm = document.getElementById('profileForm');
+
+    // --- Form Fields ---
+    const usernameField = document.getElementById('username');
+    const employeeNameField = document.getElementById('employeeName');
+    const employeeIDField = document.getElementById('employeeID');
+    const phoneField = document.getElementById('phone');
+    const companyGmailField = document.getElementById('companyGmail');
+
+    // --- Default Profile Pic ---
+    const defaultProfilePic = 'https://placehold.co/160x160/EFEFEF/AAAAAA?text=Profile';
+    const errorProfilePic = 'https://placehold.co/160x160/FCA5A5/B91C1C?text=Error'; 
+
+    // --- State Variable for New Picture ---
+    let newPictureData = null; 
+
+    // --- Utility Functions ---
+    function showLoading() { loadingOverlay.style.display = 'flex'; }
+    function hideLoading() { loadingOverlay.style.display = 'none'; }
+
+    function showToast(message, type = 'success') {
+        toastMessage.textContent = message;
+        if (type === 'success') {
+            toast.className = 'show success';
+            toastIcon.className = 'fas fa-check-circle mr-2';
+        } else {
+            toast.className = 'show error';
+            toastIcon.className = 'fas fa-exclamation-triangle mr-2';
+        }
+        setTimeout(() => {
+            toast.className = toast.className.replace('show', '');
+        }, 3000);
+    }
+
+    // --- Cache Buster Function ---
+    function addCacheBuster(url) {
+        if (!url || typeof url !== 'string') return defaultProfilePic;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}t=${new Date().getTime()}`;
+    }
+
+
+    // --- Data Loading ---
+
+    function isApiReady() {
+        return typeof google !== 'undefined' && google.script && google.script.run;
+    }
+
+    function loadProfileData() {
+        if (isApiReady()) {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(populateProfile)
+                .withFailureHandler(onLoadError)
+                .getUserProfile();
+        } else {
+            console.log('Google API not ready, retrying in 200ms...');
+            setTimeout(loadProfileData, 200);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProfileData(); 
+        console.log("UserProfile DOMContentLoaded - loading data.");
+    });
+
+    // --- Populate Profile ---
+    function populateProfile(result) {
+        hideLoading();
+        if (result.success && result.data) {
+            console.log("Profile data loaded:", result.data);
+            const data = result.data;
+            usernameField.value = data.username || '';
+            employeeNameField.value = data.employeeName || '';
+            employeeIDField.value = data.employeeID || '';
+            phoneField.value = data.phone || '';
+            companyGmailField.value = data.companyGmail || '';
+
+            const imageUrl = data.profilePicURL;
+            // Check URL Format
+            if (imageUrl && imageUrl.startsWith('https://drive.google.com/thumbnail?id=')) {
+                profilePicImg.src = addCacheBuster(imageUrl);
+                console.log("Setting profile image src:", profilePicImg.src);
+            } else {
+                 console.log("No valid profile image URL found, using default.");
+                profilePicImg.src = defaultProfilePic;
+            }
+        } else {
+            console.error("Failed to load profile data:", result.message);
+            showToast(result.message || 'Unable to load profile data.', 'error');
+            profilePicImg.src = defaultProfilePic;
+        }
+    }
+
+    function onLoadError(error) {
+        hideLoading();
+        console.error('Error loading profile:', error);
+        showToast('Error: ' + error.message, 'error');
+        profilePicImg.src = errorProfilePic; 
+    }
+
+    // --- Event Listeners ---
+
+    saveButton.addEventListener('click', () => {
+        if (!profileForm.checkValidity()) {
+            showToast('Please fill in the information correctly.', 'error');
+            return;
+        }
+
+        showLoading();
+        const profileData = { 
+            employeeName: employeeNameField.value,
+            employeeID: employeeIDField.value,
+            phone: phoneField.value,
+            companyGmail: companyGmailField.value
+        };
+
+        if (isApiReady()) {
+            if (newPictureData) {
+                console.log('Calling updateProfileAndPicture...');
+                google.script.run
+                    .withSuccessHandler(onSaveAndPicUpdateSuccess)
+                    .withFailureHandler(onSaveError)
+                    .updateProfileAndPicture(profileData, newPictureData);
+            } else {
+                console.log('Calling updateUserProfile...');
+                google.script.run
+                    .withSuccessHandler(onSaveSuccess)
+                    .withFailureHandler(onSaveError)
+                    .updateUserProfile(profileData);
+            }
+        } else {
+            hideLoading();
+            showToast('Error: Cannot connect to server.', 'error');
+            console.error('API not ready during profile save');
+        }
+    });
+
+    function onSaveSuccess(result) {
+        hideLoading();
+        if (result.success) {
+            showToast('Profile saved successfully!', 'success');
+            newPictureData = null;
+            profilePicInput.value = '';
+        } else {
+            showToast(result.message || 'Unable to save profile.', 'error');
+        }
+    }
+
+    function onSaveAndPicUpdateSuccess(result) {
+        hideLoading();
+        if (result.success) {
+            showToast(result.message || 'Profile and picture updated successfully!', 'success');
+            newPictureData = null;
+            profilePicInput.value = '';
+
+            if (result.newImageUrl) {
+                const imageUrlWithCacheBuster = addCacheBuster(result.newImageUrl);
+                profilePicImg.src = imageUrlWithCacheBuster;
+                console.log("Profile image updated after save src:", profilePicImg.src);
+
+
+                if (window.parent && window.parent.updateProfilePictureInHeader) {
+                    window.parent.updateProfilePictureInHeader(imageUrlWithCacheBuster); 
+                    console.log("Informing parent to update header image.");
+                } else {
+                    console.warn('Cannot find window.parent.updateProfilePictureInHeader.');
+                }
+            } else {
+                 console.warn('Save successful, but no new image URL returned.');
+                 profilePicImg.src = defaultProfilePic; 
+            }
+        } else {
+            console.error("Failed to save profile and picture:", result.message);
+            showToast(result.message || 'Error saving data or image.', 'error');
+        }
+    }
+
+
+    function onSaveError(error) {
+        hideLoading();
+        console.error('Error saving profile/picture:', error);
+        showToast('Error: ' + error.message, 'error');
+    }
+
+    profilePicInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            newPictureData = null;
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Image size must not exceed 2MB.', 'error');
+            profilePicInput.value = '';
+            newPictureData = null;
+            return;
+        }
+
+        if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+            showToast('Please select JPG, PNG, or GIF files only.', 'error');
+            profilePicInput.value = '';
+            newPictureData = null;
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const fileDataUrl = event.target.result;
+            const base64Data = fileDataUrl.split(',')[1];
+            const mimeType = fileDataUrl.split(',')[0].split(';')[0].split(':')[1];
+            newPictureData = { base64Data, mimeType, filename: file.name };
+
+            // Preview
+            profilePicImg.src = fileDataUrl;
+             console.log("Image selected, preview updated.");
+
+        };
+        reader.onerror = (error) => {
+            console.error('File Read Error:', error);
+            showToast('Cannot read image file.', 'error');
+            profilePicInput.value = '';
+            newPictureData = null;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    profilePicImg.onerror = function() {
+        console.error("Error loading image:", this.src, ". Falling back to default.");
+        this.onerror = null; 
+        this.src = errorProfilePic; 
+    };
+
+
+</script>
+
+</body>
+</html>
