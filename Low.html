@@ -467,7 +467,7 @@
 
                         if (currentViewingTaskNo) {
                             const updatedTask = allData.find(t => t.taskNo === currentViewingTaskNo);
-                            if (updatedTask) updateLeftPanelLive(updatedTask);
+                            if (updatedTask) window.updateLeftPanelLive(updatedTask);
                         }
                     }
                 })
@@ -774,31 +774,105 @@
 
         window.viewHistoryTask = function(taskNo) {
             const task = allData.find(t => t.taskNo === taskNo);
-            if (!task) {
-                Swal.fire({
-                    icon: 'info', 
-                    title: 'ข้อมูลประวัติเก่า', 
-                    text: 'งานประวัตินี้ถูกดำเนินการเสร็จสิ้นหรือไม่อยู่ในรายการปัจจุบัน จึงไม่สามารถดูรายละเอียดเต็มได้', 
-                    customClass: {popup: '!font-prompt'}
-                });
-                return;
-            }
             
-            currentViewingTaskNo = task.taskNo;
-            currentFoundBranch = null; 
-            
-            window.updateLeftPanelLive(task);
-            if (typeof window.populateRightPanel === 'function') {
-                window.populateRightPanel(task);
+            if (task) {
+                // ถ้าเจองานปัจจุบันในลิสต์ (เป็นงานที่ยังแอคทีฟอยู่)
+                currentViewingTaskNo = task.taskNo;
+                currentFoundBranch = null; 
+                
+                window.updateLeftPanelLive(task);
+                if (typeof window.populateRightPanel === 'function') {
+                    window.populateRightPanel(task);
+                }
+                
+                const branchNameStr = String(task.branchName).trim();
+                const btnFilter = document.getElementById('btn-filter-catalog');
+                let filterCatalog = null;
+                if (btnFilter && btnFilter.classList.contains('filtered')) {
+                    filterCatalog = task.catalogSub;
+                }
+                window.renderHistoryItems(branchNameStr, filterCatalog);
+
+                // ปิดตัวครอบทับฟอร์ม (Overlay) ออกไป หากเปิดอยู่
+                const overlay = document.getElementById('form-overlay-disable');
+                if (overlay) overlay.remove();
+
+            } else {
+                // โหมดดูงานประวัติย้อนหลัง (ไม่มีข้อมูลใน allData แต่มีใน branchHistoryCache)
+                let historyItem = null;
+                let branchNameStr = "";
+                for (const b in branchHistoryCache) {
+                    const found = branchHistoryCache[b].data.find(d => d.taskNo === taskNo);
+                    if (found) {
+                        historyItem = found;
+                        branchNameStr = b;
+                        break;
+                    }
+                }
+
+                if (historyItem) {
+                    // จำลองชุดข้อมูลเบื้องต้นเพื่อเอาไปโชว์ที่ฝั่งซ้ายของจอเหมือนหน้า Work.html
+                    const mockTask = {
+                        taskNo: historyItem.taskNo,
+                        highLow: 'HISTORY',
+                        reportDate: historyItem.date.split(' ')[0] || '-',
+                        createTime: historyItem.date.split(' ')[1] || '',
+                        branchName: branchNameStr,
+                        province: currentFoundBranch ? currentFoundBranch.province : '-', 
+                        phone: currentFoundBranch ? currentFoundBranch.phone : '-',
+                        catalogSub: historyItem.catalog,
+                        issue: historyItem.issue,
+                        detail: historyItem.detail,
+                        dueDate: '-',
+                        dueTime: ''
+                    };
+                    
+                    window.updateLeftPanelLive(mockTask);
+                    
+                    // แจ้งเตือนสั้นๆ ให้ผู้ใช้งานทราบว่าดูข้อมูลอดีตอยู่
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'โหมดดูประวัติย้อนหลัง',
+                        text: 'แสดงข้อมูลเบื้องต้นของงานในอดีต',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 3000,
+                        showConfirmButton: false,
+                        customClass: {popup: '!font-prompt'}
+                    });
+
+                    // ใส่หน้าต่างม่านสีชา (Overlay) ลงไปที่ฝั่งขวา เพื่อปิดการพิมพ์และบันทึก
+                    const rightPanel = document.getElementById('panel-right');
+                    if (rightPanel) {
+                        rightPanel.classList.add('relative');
+                        let overlay = document.getElementById('form-overlay-disable');
+                        if (!overlay) {
+                            overlay = document.createElement('div');
+                            overlay.id = 'form-overlay-disable';
+                            overlay.className = 'absolute inset-0 z-[50] bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-xl m-2 transition-all';
+                            overlay.innerHTML = `
+                                <div class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-8 py-6 rounded-2xl shadow-lg text-center font-prompt max-w-[85%]">
+                                    <i class="fa-solid fa-clock-rotate-left text-4xl mb-3 text-indigo-400"></i>
+                                    <h3 class="font-bold text-lg mb-1">โหมดประวัติย้อนหลัง</h3>
+                                    <p class="text-sm text-indigo-600/80 mb-5">คุณกำลังดูรายละเอียดเบื้องต้นของงานประวัติในอดีต<br>ฟอร์มจะถูกล็อกชั่วคราวเพื่อป้องกันการบันทึกทับข้อมูล</p>
+                                    <button onclick="document.getElementById('form-overlay-disable').remove(); window.viewHistoryTask(currentViewingTaskNo);" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all text-sm">
+                                        <i class="fa-solid fa-arrow-left mr-1"></i> กลับไปทำงานปัจจุบัน
+                                    </button>
+                                </div>
+                            `;
+                            rightPanel.appendChild(overlay);
+                        }
+                    }
+                } else {
+                    // หากหาข้อมูลในระบบไม่เจอเลย
+                    Swal.fire({
+                        icon: 'info', 
+                        title: 'ไม่พบข้อมูล', 
+                        text: 'ไม่สามารถดึงข้อมูลประวัติรายการนี้ได้', 
+                        customClass: {popup: '!font-prompt'}
+                    });
+                }
             }
-            
-            const branchNameStr = String(task.branchName).trim();
-            const btnFilter = document.getElementById('btn-filter-catalog');
-            let filterCatalog = null;
-            if (btnFilter && btnFilter.classList.contains('filtered')) {
-                filterCatalog = task.catalogSub;
-            }
-            window.renderHistoryItems(branchNameStr, filterCatalog);
         };
 
         window.renderHistoryItems = function(branchName, filterCatalog = null) {
@@ -848,12 +922,12 @@
                 btnElement.classList.remove('filtered', 'bg-indigo-50', 'border-indigo-200', 'text-indigo-600');
                 btnElement.classList.add('bg-white', 'border-slate-300', 'text-slate-600');
                 btnElement.innerHTML = `<i class="fa-solid fa-filter text-slate-400"></i> Catalog เดียวกับงานนี้`;
-                renderHistoryItems(branchNameStr, null);
+                window.renderHistoryItems(branchNameStr, null);
             } else {
                 btnElement.classList.add('filtered', 'bg-indigo-50', 'border-indigo-200', 'text-indigo-600');
                 btnElement.classList.remove('bg-white', 'border-slate-300', 'text-slate-600');
                 btnElement.innerHTML = `<i class="fa-solid fa-filter text-indigo-500"></i> แสดง Catalog นี้เท่านั้น`;
-                renderHistoryItems(branchNameStr, catalog);
+                window.renderHistoryItems(branchNameStr, catalog);
             }
         };
 
@@ -1228,14 +1302,19 @@
 
         window.updateLeftPanelLive = function(task) {
             if(!task) return;
-            // ถ้ากำลังแสดงข้อมูลที่ค้นหาเจอใหม่ ให้ข้ามการอัปเดตแบบ Live บางส่วน
-            if(currentFoundBranch) return; 
+            // ถ้ากำลังแสดงข้อมูลที่ค้นหาเจอใหม่ (แต่ไม่ใช่งานประวัติย้อนหลัง) ให้ข้ามการอัปเดตแบบ Live บางส่วน
+            if(currentFoundBranch && task.highLow !== 'HISTORY') return; 
 
             const setHtml = (id, val) => { const el = document.getElementById(id); if(el) el.innerHTML = val; };
             
             setHtml('live-highlow', task.highLow || '-');
             const hL = document.getElementById('live-highlow');
-            if (hL) hL.className = `text-[14px] font-bold ${task.highLow === 'HIGH' ? 'text-rose-600' : 'text-emerald-600'}`;
+            if (hL) {
+                let colClass = 'text-emerald-600';
+                if (task.highLow === 'HIGH') colClass = 'text-rose-600';
+                else if (task.highLow === 'HISTORY') colClass = 'text-slate-500';
+                hL.className = `text-[14px] font-bold ${colClass}`;
+            }
 
             setHtml('live-created', `${task.reportDate || '-'} <span class="text-[11px] font-normal text-slate-500">${task.createTime || ''}</span>`);
             const prov = task.province || (task.rawData && task.rawData[14]) || '-';
