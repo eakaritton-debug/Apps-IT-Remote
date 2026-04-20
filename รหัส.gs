@@ -2294,7 +2294,7 @@ function processImportF1Data(dataArray, fileName, selectedWorkers) {
       let taskNoColIndex = headers.findIndex(h => String(h || "").trim().toLowerCase().includes("task no"));
       if (taskNoColIndex === -1) taskNoColIndex = 3; 
 
-      // ตรวจข้อมูลซ้ำใน AddName (อ่านรวดเดียวด้วย getValues)
+      // ตรวจข้อมูลซ้ำใน AddName 
       const existingTasksAddName = new Set();
       let addNameSheet = ss.getSheetByName("AddName");
       
@@ -2314,7 +2314,7 @@ function processImportF1Data(dataArray, fileName, selectedWorkers) {
         }
       }
 
-      // ตรวจข้อมูลซ้ำใน Assigned_Tasks (อ่านรวดเดียวด้วย getValues)
+      // ตรวจข้อมูลซ้ำใน Assigned_Tasks
       const existingTasksAssigned = new Set();
       let assignedSheet = ss.getSheetByName("Assigned_Tasks");
       if (assignedSheet) {
@@ -2327,7 +2327,7 @@ function processImportF1Data(dataArray, fileName, selectedWorkers) {
         }
       }
 
-      // คัดแยกงานใน Memory
+      // คัดแยกงานใน Memory เพื่อเตรียมจ่ายงาน
       const tasksToAssign = [];
       for (let i = 1; i < filteredData.length; i++) {
         const row = filteredData[i];
@@ -2341,7 +2341,10 @@ function processImportF1Data(dataArray, fileName, selectedWorkers) {
           duplicateCount++;
         } else {
           tasksToAssign.push(row);
-          if (selectedWorkers.length === 1 && tasksToAssign.length >= 25) break; 
+          // ----------------------------------------------------
+          // ระบบจำกัดงาน: หากเลือกผู้รับเหมา/พนักงาน เพียง 1 คน ให้รับสูงสุด 50 งานแรก (ที่เก่าสุด)
+          // ----------------------------------------------------
+          if (selectedWorkers.length === 1 && tasksToAssign.length >= 50) break; 
         }
       }
 
@@ -2367,7 +2370,7 @@ function processImportF1Data(dataArray, fileName, selectedWorkers) {
           workerTaskCount[assignedWorker]++; 
         }
 
-        // เขียนรวดเดียว (Batch Write)
+        // เขียนรวดเดียว (Batch Write) ประหยัดเวลาการทำงาน
         addNameSheet.getRange(addNameSheet.getLastRow() + 1, 1, rowsToSave.length, rowsToSave[0].length).setValues(rowsToSave);
         assignedCount = rowsToSave.length;
         assignMsg = `จ่ายงานใหม่ ${assignedCount} รายการ ให้ Senior ${selectedWorkers.length} คน เรียบร้อยแล้ว`;
@@ -2455,7 +2458,7 @@ function getImportF1History(page, limit, filterDate) {
 
     const data = logSheet.getRange(1, 1, lastRow, logSheet.getLastColumn()).getValues();
     let rows = data.slice(1); 
-    rows.reverse(); 
+    rows.reverse(); // เรียงจากใหม่ไปเก่า
 
     const timeZone = Session.getScriptTimeZone() || "GMT+7";
 
@@ -3566,7 +3569,7 @@ function getActiveSeniors() {
       return { success: true, data: [], isUserCheckedIn: false };
     }
 
-    // แก้ปัญหาโหลดช้า: กำหนดขนาด Range ให้พอดี ไม่เอาช่องว่าง
+    // กำหนดขนาด Range ให้พอดี ไม่เอาช่องว่าง เพื่อความรวดเร็ว
     const lastRow = checkinSheet.getLastRow();
     const lastCol = checkinSheet.getLastColumn();
     const ciData = checkinSheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
@@ -3592,14 +3595,14 @@ function getActiveSeniors() {
            activeWorkers.push({
              name: workerName,
              timeIn: timeIn,
-             dateIn: dateIn // ส่งกลับไปหน้าบ้าน
+             dateIn: dateIn
            });
         }
       }
     }
 
     if (seenNames.has(currentUserInfo)) {
-      isUserCheckedIn = true; // ระบุว่าคนล็อกอิน ลงเวลาเข้างานหรือยัง
+      isUserCheckedIn = true; // ตรวจสอบว่าคนที่กำลังล็อกอินได้ลงเวลาเข้างานหรือยัง
     }
 
     return { success: true, data: activeWorkers, isUserCheckedIn: isUserCheckedIn };

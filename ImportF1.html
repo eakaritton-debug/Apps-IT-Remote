@@ -44,7 +44,7 @@
                         </h2>
                         <p class="text-gray-500 mt-2 text-sm">
                             อัปโหลดไฟล์ Excel เพื่อบันทึกงานไอทีทั้งหมดลงฐานข้อมูล <br>
-                            <span class="text-indigo-500 font-medium"><i class="fa-solid fa-shield-halved"></i> ติ๊กเลือกรายชื่อคนด้านล่างเพื่อจ่ายงานให้ผู้ที่กำลังเข้ากะ (ระบบสุ่มการจ่ายงาน โดยจ่ายงานไม่ซ้ำกัน) <span class="text-red-500 underline">*จำเป็นต้องเลือกผู้รับงานอย่างน้อย 1 คน</span></span>
+                            <span class="text-indigo-500 font-medium"><i class="fa-solid fa-shield-halved"></i> ติ๊กเลือกรายชื่อคนด้านล่างเพื่อจ่ายงานให้ผู้ที่กำลังเข้ากะ (ระบบสุ่มการจ่ายงาน โดยจ่ายงานไม่ซ้ำกัน) <span class="text-red-500 underline">*จำเป็นต้องเลือกผู้รับงานอย่างน้อย 1 คน (หากเลือก 1 คน จะดึงงานเก่าสุดให้สูงสุด 50 งาน)</span></span>
                         </p>
                     </div>
                     <button onclick="refreshData()" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
@@ -455,7 +455,7 @@
                     const targetColumnName = "Services Catalog Main";
                     const catalogIndex = headers.findIndex(h => String(h || "").trim() === targetColumnName);
                     
-                    let filteredArr = [headers]; 
+                    let filteredArr = []; 
                     
                     if (catalogIndex !== -1) {
                         for (let i = 1; i < jsonArr.length; i++) {
@@ -464,10 +464,23 @@
                             if (catalogValue === "งานไอที") filteredArr.push(row);
                         }
                         
-                        if (filteredArr.length <= 1) {
+                        if (filteredArr.length === 0) {
                             Swal.fire({ icon: 'warning', title: 'ไม่พบข้อมูลงานไอที', text: 'ไม่มีข้อมูลที่ระบุว่าเป็น "งานไอที" เลย' });
                             resetUI(); return;
                         }
+
+                        // --- ระบบจัดเรียงงานจาก เก่าที่สุด ไป ใหม่ที่สุด ---
+                        // โดยอ้างอิงจาก Task No. (คอลัมน์ที่มีคำว่า "task no")
+                        const taskNoColIndex = headers.findIndex(h => String(h || "").trim().toLowerCase().includes("task no"));
+                        filteredArr.sort((a, b) => {
+                            let valA = (taskNoColIndex !== -1 && a[taskNoColIndex]) ? String(a[taskNoColIndex]).trim() : "";
+                            let valB = (taskNoColIndex !== -1 && b[taskNoColIndex]) ? String(b[taskNoColIndex]).trim() : "";
+                            return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+                        });
+
+                        // นำ Headers กลับไปไว้ที่แถวแรก
+                        filteredArr.unshift(headers);
+                        
                     } else {
                         Swal.fire({ icon: 'error', title: 'รูปแบบไฟล์ผิดพลาด', text: `ไม่พบคอลัมน์ชื่อ "${targetColumnName}"` });
                         resetUI(); return;
@@ -538,7 +551,7 @@
             const selectedCheckboxes = document.querySelectorAll('.worker-checkbox:checked');
             const selectedWorkers = Array.from(selectedCheckboxes).map(cb => cb.value);
 
-            // เพิ่มการเช็ค: ต้องมีคนถูกเลือกอย่างน้อย 1 คน
+            // เช็ค: ต้องมีคนถูกเลือกอย่างน้อย 1 คน
             if (selectedWorkers.length === 0) {
                 Swal.fire({
                     icon: 'warning',
@@ -550,8 +563,18 @@
             }
 
             let actionTextHtml = `<span class="font-bold text-[#4a7c55] text-sm tracking-wide bg-green-50 px-3 py-1 rounded-md">REPLACE + AUTO ASSIGN</span>`;
-
             const totalRows = currentExcelData.length - 1;
+
+            // การแจ้งเตือนหากเลือก 1 คน และมีการจำกัด 50 งาน
+            let limitNoticeHtml = '';
+            if (selectedWorkers.length === 1) {
+                limitNoticeHtml = `
+                    <div class="mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-700 text-sm flex items-start gap-2 shadow-sm">
+                        <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+                        <span><b>ข้อสังเกต:</b> เนื่องจากคุณเลือกผู้รับงานเพียง 1 คน ระบบจะดึงงานที่ <b>เก่าที่สุดสูงสุดไม่เกิน 50 งานแรก</b> เพื่อจ่ายให้เท่านั้น ป้องกันปัญหางานล้นมือ</span>
+                    </div>
+                `;
+            }
 
             const customPopupHtml = `
                 <div class="font-sans px-2 md:px-6 py-2">
@@ -584,7 +607,7 @@
                             </div>
                         </div>
                     </div>
-
+                    ${limitNoticeHtml}
                     <p class="text-gray-500 text-base mb-2 font-medium">Confirm to save this file?</p>
                 </div>
             `;

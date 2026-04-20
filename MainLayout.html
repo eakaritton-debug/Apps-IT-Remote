@@ -456,6 +456,7 @@
 
 <script>
     // --- Configuration ---
+    const LOGIN_EXPIRATION_SECONDS = 8 * 60 * 60; // 8 ชั่วโมง
     const CONFIG = {
         scriptUrl: '<?= scriptUrl ?>',
         defaultPic: 'https://placehold.co/40x40/EFEFEF/AAAAAA?text=U',
@@ -633,6 +634,9 @@
                     checkForNewOrders(); 
                     state.currentInterval = setInterval(checkForNewOrders, CONFIG.pollInterval);
 
+                    // เริ่มนับเวลา Session Timeout ทันทีที่โหลดแอปเสร็จ
+                    startSessionTimer();
+
                 })
                 .withFailureHandler(err => {
                     if (handleSystemError(err)) return;
@@ -645,6 +649,19 @@
             // โหมดทดสอบ Local
             window.loadPage('Dashboard');
         }
+    }
+
+    // --- Session Timeout Logic ---
+    function startSessionTimer() {
+        setTimeout(() => {
+            showToast('Session Expired', 'Session หมดอายุ กรุณารีเฟรชหน้าเว็บและล็อกอินใหม่อีกครั้ง', 'error');
+            
+            // รอให้ผู้ใช้เห็นข้อความแจ้งเตือนเล็กน้อย (1.5 วินาที) ก่อนบังคับเตะออก
+            setTimeout(() => {
+                handleLogout();
+            }, 1500);
+
+        }, LOGIN_EXPIRATION_SECONDS * 1000);
     }
 
     // --- Background Preloading Logic ---
@@ -981,7 +998,7 @@
         
         // ตรวจจับข้อความว่ามีคำเกี่ยวกับการที่ Session หมดอายุหรือไม่
         if (errorText.includes('Session หมดอายุ') || errorText.includes('ล็อกอิน') || errorText.includes('หมดอายุ')) {
-            showToast('Session Expired', 'เซสชันหมดอายุ กำลังออกจากระบบอัตโนมัติ...', 'error');
+            showToast('Session Expired', 'Session หมดอายุ กรุณารีเฟรชหน้าเว็บและล็อกอินใหม่อีกครั้ง', 'error');
             setTimeout(() => {
                 handleLogout();
             }, 1000);
